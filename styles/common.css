@@ -1,0 +1,179 @@
+/* reusable image preview component */
+
+.cs-hero-box-preview {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--cs-hero-box-spacing-sm);
+}
+
+.cs-hero-box-preview__label {
+  font-size: var(--cs-hero-box-font-size-md);
+  font-weight: bold;
+}
+
+.cs-hero-box-preview__image {
+  width: var(--cs-hero-box-preview-size-sm);
+  height: var(--cs-hero-box-preview-size-sm);
+  object-fit: cover;
+  border-radius: var(--cs-hero-box-radius-md);
+  border: 1px solid var(--cs-hero-box-border-color);
+}
+
+/* dashed placeholder when there's no image */
+.cs-hero-box-preview__placeholder {
+  width: var(--cs-hero-box-preview-size-sm);
+  height: var(--cs-hero-box-preview-size-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--cs-hero-box-bg-secondary);
+  border: 1px dashed var(--cs-hero-box-border-color);
+  border-radius: var(--cs-hero-box-radius-md);
+  color: var(--cs-hero-box-text-muted);
+  font-size: 2rem;
+}
+
+/* larger preview variant */
+.cs-hero-box-preview--lg .cs-hero-box-preview__image,
+.cs-hero-box-preview--lg .cs-hero-box-preview__placeholder {
+  width: var(--cs-hero-box-preview-size-md);
+  height: var(--cs-hero-box-preview-size-md);
+}
+
+/* url input with a browse button next to it */
+.cs-hero-box-url-input {
+  display: flex;
+  gap: var(--cs-hero-box-spacing-sm);
+}
+
+.cs-hero-box-url-input input {
+  flex: 1;
+}
+
+.cs-hero-box-url-input button {
+  padding: var(--cs-hero-box-spacing-xs) var(--cs-hero-box-spacing-sm);
+}
+
+/* generic tag checkbox grid */
+.cs-hero-box-tag-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--cs-hero-box-spacing-xs) var(--cs-hero-box-spacing-md);
+}
+
+.cs-hero-box-tag-option {
+  display: flex;
+  align-items: center;
+  gap: var(--cs-hero-box-spacing-xs);
+  font-size: var(--cs-hero-box-font-size-lg);
+  cursor: pointer;
+}
+
+/* subrace options are indented and smaller */
+.cs-hero-box-tag-option--subrace {
+  margin-left: var(--cs-hero-box-spacing-lg);
+  font-size: var(--cs-hero-box-font-size-md);
+  color: var(--cs-hero-box-text-secondary);
+}
+
+/* removable tag chip */
+.cs-hero-box-custom-tag {
+  display: flex;
+  align-items: center;
+  gap: var(--cs-hero-box-spacing-xs);
+  padding: var(--cs-hero-box-spacing-xs) var(--cs-hero-box-spacing-sm);
+  background: var(--cs-hero-box-bg-tertiary);
+  border-radius: var(--cs-hero-box-radius-sm);
+  font-size: var(--cs-hero-box-font-size-md);
+}
+
+.cs-hero-box-custom-tag button {
+  padding: 0;
+  background: none;
+  border: none;
+  cursor: pointer;
+  opacity: 0.7;
+}
+
+.cs-hero-box-custom-tag button:hover {
+  opacity: 1;
+}
+
+/* generic empty state — big icon + message */
+.cs-hero-box-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  min-height: 200px;
+  color: var(--cs-hero-box-text-muted);
+}
+
+.cs-hero-box-empty i {
+  font-size: 3rem;
+  margin-bottom: var(--cs-hero-box-spacing-lg);
+}
+
+/* info/notes box */
+.cs-hero-box-notes {
+  margin-bottom: var(--cs-hero-box-spacing-lg);
+  padding: var(--cs-hero-box-spacing-sm);
+  background: var(--cs-hero-box-bg-secondary);
+  border-radius: var(--cs-hero-box-radius-md);
+  font-size: var(--cs-hero-box-font-size-lg);
+}
+
+/* small pill badge */
+.cs-hero-box-badge {
+  font-size: var(--cs-hero-box-font-size-sm);
+  padding: 2px var(--cs-hero-box-spacing-sm);
+  background: var(--cs-hero-box-bg-tertiary);
+  border-radius: var(--cs-hero-box-radius-sm);
+}
+
+/* generic scrollable container */
+.cs-hero-box-scrollable {
+  flex: 1;
+  overflow-y: auto;
+  min-height: 0;
+}
+
+/* ========================================
+   custom scrollbar for all module windows
+   ======================================== */
+
+[id^="cs-hero-box-"] ::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+[id^="cs-hero-box-"] ::-webkit-scrollbar-track {
+  background: var(--cs-hero-box-scrollbar-track);
+  border-radius: var(--cs-hero-box-radius-sm);
+}
+
+[id^="cs-hero-box-"] ::-webkit-scrollbar-thumb {
+  background: var(--cs-hero-box-scrollbar-thumb);
+  border-radius: var(--cs-hero-box-radius-sm);
+}
+
+[id^="cs-hero-box-"] ::-webkit-scrollbar-thumb:hover {
+  background: var(--cs-hero-box-scrollbar-thumb-hover);
+}
+
+[id^="cs-hero-box-"] ::-webkit-scrollbar-corner {
+  background: var(--cs-hero-box-scrollbar-track);
+}
+
+/* firefox scrollbar styling */
+[id^="cs-hero-box-"] {
+  scrollbar-width: thin;
+  scrollbar-color: var(--cs-hero-box-scrollbar-thumb) var(--cs-hero-box-scrollbar-track);
+}
+
+[id^="cs-hero-box-"] * {
+  scrollbar-width: thin;
+  scrollbar-color: var(--cs-hero-box-scrollbar-thumb) var(--cs-hero-box-scrollbar-track);
+}

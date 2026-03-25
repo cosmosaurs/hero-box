@@ -1,0 +1,196 @@
+<div class="cs-hero-box-data-manager {{#if pickerMode}}picker-mode{{/if}}">
+  {{#unless pickerMode}}
+    <nav class="cs-hero-box-data-manager__tabs">
+      <button type="button" class="cs-hero-box-data-manager__tab {{#if isImagesTab}}active{{/if}}" data-action="switchTab" data-tab="images">
+        <i class="fas fa-images"></i> {{localize "cs-hero-box.dataManager.tabs.images"}}
+      </button>
+      <button type="button" class="cs-hero-box-data-manager__tab {{#if isNamesTab}}active{{/if}}" data-action="switchTab" data-tab="names">
+        <i class="fas fa-signature"></i> {{localize "cs-hero-box.dataManager.tabs.names"}}
+      </button>
+      <button type="button" class="cs-hero-box-data-manager__tab {{#if isTagsTab}}active{{/if}}" data-action="switchTab" data-tab="tags">
+        <i class="fas fa-tags"></i> {{localize "cs-hero-box.dataManager.tabs.tags"}}
+      </button>
+    </nav>
+  {{/unless}}
+
+  {{#unless pickerMode}}
+    <header class="cs-hero-box-data-manager__header">
+      {{#if isImagesTab}}
+        <div class="cs-hero-box-data-manager__controls">
+          <select class="cs-hero-box-data-manager__journal-select">
+            <option value="">{{localize "cs-hero-box.dataManager.selectJournal"}}</option>
+            {{#each journals}}
+              <option value="{{id}}" {{#if (eq id ../selectedJournalId)}}selected{{/if}}>{{name}}</option>
+            {{/each}}
+          </select>
+          <button type="button" data-action="addImage" {{#unless selectedJournalId}}disabled{{/unless}}>
+            <i class="fas fa-plus"></i> {{localize "cs-hero-box.dataManager.addImage"}}
+          </button>
+          <button type="button" data-action="importFromFolder" {{#unless selectedJournalId}}disabled{{/unless}}>
+            <i class="fas fa-folder-open"></i> {{localize "cs-hero-box.dataManager.importFolder"}}
+          </button>
+        </div>
+      {{else if isNamesTab}}
+        <div class="cs-hero-box-data-manager__controls">
+          <select class="cs-hero-box-data-manager__journal-select">
+            <option value="">{{localize "cs-hero-box.dataManager.selectJournal"}}</option>
+            {{#each journals}}
+              <option value="{{id}}" {{#if (eq id ../selectedJournalId)}}selected{{/if}}>{{name}}</option>
+            {{/each}}
+          </select>
+          <button type="button" data-action="addNameSet" {{#unless selectedJournalId}}disabled{{/unless}}>
+            <i class="fas fa-plus"></i> {{localize "cs-hero-box.dataManager.addNameSet"}}
+          </button>
+        </div>
+      {{else if isTagsTab}}
+        <div class="cs-hero-box-data-manager__controls">
+          <select class="cs-hero-box-data-manager__journal-select">
+            <option value="">{{localize "cs-hero-box.dataManager.selectJournal"}}</option>
+            {{#each journals}}
+              <option value="{{id}}" {{#if (eq id ../selectedJournalId)}}selected{{/if}}>{{name}}</option>
+            {{/each}}
+          </select>
+          <button type="button" data-action="addTag" {{#unless selectedJournalId}}disabled{{/unless}}>
+            <i class="fas fa-plus"></i> {{localize "cs-hero-box.dataManager.addTag"}}
+          </button>
+        </div>
+      {{/if}}
+    </header>
+  {{/unless}}
+
+  <div class="cs-hero-box-data-manager__body">
+    <aside class="cs-hero-box-data-manager__sidebar" data-scroll-id="sidebar">
+      <div class="cs-hero-box-data-manager__search-container">
+        <input type="text" class="cs-hero-box-data-manager__search" name="search" placeholder="{{localize 'cs-hero-box.dataManager.searchPlaceholder'}}" value="{{searchQuery}}" />
+      </div>
+
+      <div class="cs-hero-box-data-manager__tag-list" data-scroll-id="tag-list">
+        {{#each tagsByCategory}}
+          {{#if tags.length}}
+            {{#unless hidden}}
+              <div class="cs-hero-box-data-manager__tag-group {{#if collapsible}}collapsible{{/if}}" data-category="{{@key}}">
+                <div class="cs-hero-box-data-manager__tag-group-header" data-action="toggleTagGroup">
+                  <h4><i class="fas {{icon}}"></i> {{label}}</h4>
+                  <i class="fas fa-chevron-down cs-hero-box-data-manager__tag-group-toggle"></i>
+                </div>
+                <div class="cs-hero-box-data-manager__tag-group-content">
+                  {{#each tags}}
+                    <button type="button" class="cs-hero-box-data-manager__tag {{#if isActive}}active{{/if}}" data-action="toggleTag" data-tag="{{id}}" {{#if isTypeFilter}}data-type-filter="true"{{/if}} {{#if isCategoryFilter}}data-category-filter="true"{{/if}}>
+                      <span class="cs-hero-box-data-manager__tag-name">{{label}}</span>
+                      <span class="cs-hero-box-data-manager__tag-count">{{count}}</span>
+                    </button>
+                  {{/each}}
+                </div>
+              </div>
+            {{/unless}}
+          {{/if}}
+        {{/each}}
+      </div>
+    </aside>
+
+    <div class="cs-hero-box-data-manager__main">
+      {{#if isImagesTab}}
+        <div class="cs-hero-box-data-manager__grid-container" data-scroll-id="grid">
+          {{#unless totalImages}}
+            <div class="cs-hero-box-data-manager__empty">
+              <i class="fas fa-images"></i>
+              <p>{{localize "cs-hero-box.dataManager.noImages"}}</p>
+            </div>
+          {{/unless}}
+        </div>
+
+        <div class="cs-hero-box-data-manager__toolbar {{#if hasSelection}}has-selection{{/if}}">
+          <div class="cs-hero-box-data-manager__toolbar-info">
+            <span class="cs-hero-box-data-manager__total-count">
+              {{totalImages}} {{localize "cs-hero-box.dataManager.images"}}
+            </span>
+            {{#if hasSelection}}
+              <span class="cs-hero-box-data-manager__selection-count">{{selectedCount}} {{localize "cs-hero-box.dataManager.selected"}}</span>
+            {{/if}}
+          </div>
+          <div class="cs-hero-box-data-manager__toolbar-actions">
+            {{#if pickerMode}}
+              <button type="button" data-action="selectAll" data-tooltip="{{localize 'cs-hero-box.dataManager.selectAll'}}"><i class="fas fa-check-double"></i></button>
+              <div class="cs-hero-box-toolbar-separator"></div>
+              <button type="button" data-action="cancelSelection">{{localize "Cancel"}}</button>
+              <button type="button" class="primary" data-action="confirmSelection" {{#unless hasSelection}}disabled{{/unless}}>
+                <i class="fas fa-check"></i> {{localize "cs-hero-box.imagePicker.select"}}
+              </button>
+            {{else}}
+              <button type="button" data-action="selectAll" data-tooltip="{{localize 'cs-hero-box.dataManager.selectAll'}}"><i class="fas fa-check-double"></i></button>
+              <div class="cs-hero-box-toolbar-separator"></div>
+              <button type="button" data-action="createActorFromSelected" data-tooltip="{{localize 'cs-hero-box.dataManager.createActor'}}" {{#unless hasSelection}}disabled{{/unless}}>
+                <i class="fas fa-user-plus"></i>
+              </button>
+              <button type="button" data-action="editSelected" data-tooltip="{{localize 'cs-hero-box.dataManager.editTags'}}" {{#unless hasSelection}}disabled{{/unless}}>
+                <i class="fas fa-tags"></i>
+              </button>
+              <button type="button" data-action="refreshTagsFromNames" data-tooltip="{{localize 'cs-hero-box.dataManager.refreshTags'}}" {{#unless hasSelection}}disabled{{/unless}}>
+                <i class="fas fa-sync-alt"></i>
+              </button>
+              <button type="button" class="danger" data-action="deleteSelected" data-tooltip="{{localize 'cs-hero-box.dataManager.delete'}}" {{#unless hasSelection}}disabled{{/unless}}>
+                <i class="fas fa-trash"></i>
+              </button>
+            {{/if}}
+          </div>
+        </div>
+      {{/if}}
+
+      {{#if isNamesTab}}
+        <main class="cs-hero-box-data-manager__content" data-scroll-id="names-content">
+          {{#if nameSets.length}}
+            <div class="cs-hero-box-data-manager__name-list">
+              {{#each nameSets}}
+                <div class="cs-hero-box-data-manager__name-item" data-uuid="{{uuid}}">
+                  <div class="cs-hero-box-data-manager__name-header">
+                    <span class="cs-hero-box-data-manager__name-title">{{name}}</span>
+                    <span class="cs-hero-box-data-manager__name-type">{{typeLabel}}</span>
+                  </div>
+                  <div class="cs-hero-box-data-manager__name-meta">
+                    <span class="cs-hero-box-data-manager__name-tags"><i class="fas fa-tags"></i> {{tagsDisplay}}</span>
+                    <span class="cs-hero-box-data-manager__name-locales"><i class="fas fa-globe"></i> {{localesDisplay}}</span>
+                  </div>
+                  {{#if sourceName}}
+                    <div class="cs-hero-box-data-manager__name-source"><i class="fas fa-database"></i> {{sourceName}}</div>
+                  {{/if}}
+                  <div class="cs-hero-box-data-manager__name-actions">
+                    <button type="button" data-action="testGenerate" data-tags="{{tags}}" data-tooltip="{{localize 'cs-hero-box.dataManager.test'}}"><i class="fas fa-dice"></i></button>
+                    <button type="button" data-action="editNameSet" data-tooltip="{{localize 'cs-hero-box.dataManager.edit'}}"><i class="fas fa-edit"></i></button>
+                    <button type="button" data-action="deleteNameSet" data-tooltip="{{localize 'cs-hero-box.dataManager.delete'}}"><i class="fas fa-trash"></i></button>
+                  </div>
+                </div>
+              {{/each}}
+            </div>
+          {{else}}
+            <div class="cs-hero-box-data-manager__empty"><i class="fas fa-signature"></i><p>{{localize "cs-hero-box.dataManager.noSets"}}</p></div>
+          {{/if}}
+        </main>
+      {{/if}}
+
+      {{#if isTagsTab}}
+        <main class="cs-hero-box-data-manager__content" data-scroll-id="tags-content">
+          {{#if tags.length}}
+            <div class="cs-hero-box-data-manager__tag-table">
+              {{#each tags}}
+                <div class="cs-hero-box-data-manager__tag-row {{#if isSubrace}}cs-hero-box-data-manager__tag-row--subrace{{/if}}" data-uuid="{{uuid}}">
+                  <div class="cs-hero-box-data-manager__tag-id"><strong>{{id}}</strong></div>
+                  <div class="cs-hero-box-data-manager__tag-label">{{label}}</div>
+                  <div class="cs-hero-box-data-manager__tag-category"><span class="cs-hero-box-data-manager__category-badge">{{categoryLabel}}</span></div>
+                  {{#if sourceName}}
+                    <div class="cs-hero-box-data-manager__tag-source"><i class="fas fa-database"></i> {{sourceName}}</div>
+                  {{/if}}
+                  <div class="cs-hero-box-data-manager__tag-actions">
+                    <button type="button" data-action="editTag" data-tooltip="{{localize 'cs-hero-box.dataManager.edit'}}"><i class="fas fa-edit"></i></button>
+                    <button type="button" data-action="deleteTag" data-tooltip="{{localize 'cs-hero-box.dataManager.delete'}}"><i class="fas fa-trash"></i></button>
+                  </div>
+                </div>
+              {{/each}}
+            </div>
+          {{else}}
+            <div class="cs-hero-box-data-manager__empty"><i class="fas fa-tags"></i><p>{{localize "cs-hero-box.dataManager.noTags"}}</p></div>
+          {{/if}}
+        </main>
+      {{/if}}
+    </div>
+  </div>
+</div>

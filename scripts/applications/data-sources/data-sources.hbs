@@ -1,0 +1,82 @@
+<div class="cs-hero-box-data-sources">
+  <p class="notes">
+    {{localize "cs-hero-box.dataSources.notes"}}
+  </p>
+
+  <section class="cs-hero-box-data-sources__section">
+    <h3>
+      <i class="fas fa-database"></i>
+      {{localize "cs-hero-box.dataSources.sources"}}
+    </h3>
+
+    <ul class="cs-hero-box-data-sources__list">
+      {{#each dataSources}}
+        <li class="cs-hero-box-data-sources__item {{#unless enabled}}cs-hero-box-data-sources__item--disabled{{/unless}}">
+          <div class="cs-hero-box-data-sources__order-controls">
+            <button 
+              type="button" 
+              class="cs-hero-box-data-sources__move"
+              data-action="moveSource"
+              data-source-id="{{id}}"
+              data-direction="up"
+              {{#unless canMoveUp}}disabled{{/unless}}
+              data-tooltip="{{localize 'cs-hero-box.dataSources.moveUp'}}"
+            >
+              <i class="fas fa-chevron-up"></i>
+            </button>
+            <button 
+              type="button" 
+              class="cs-hero-box-data-sources__move"
+              data-action="moveSource"
+              data-source-id="{{id}}"
+              data-direction="down"
+              {{#unless canMoveDown}}disabled{{/unless}}
+              data-tooltip="{{localize 'cs-hero-box.dataSources.moveDown'}}"
+            >
+              <i class="fas fa-chevron-down"></i>
+            </button>
+          </div>
+          <label class="cs-hero-box-data-sources__toggle">
+            <input 
+              type="checkbox" 
+              data-action="toggleSource"
+              data-source-id="{{id}}"
+              {{#if enabled}}checked{{/if}}
+            />
+          </label>
+          <i class="fas {{icon}}"></i>
+          <span class="cs-hero-box-data-sources__name">{{name}}</span>
+          <span class="cs-hero-box-data-sources__type">({{typeLabel}})</span>
+          <button 
+            type="button" 
+            class="cs-hero-box-data-sources__remove"
+            data-action="removeSource"
+            data-source-id="{{id}}"
+            data-tooltip="{{localize 'cs-hero-box.dataSources.remove'}}"
+          >
+            <i class="fas fa-times"></i>
+          </button>
+        </li>
+      {{else}}
+        <li class="cs-hero-box-data-sources__empty">
+          {{localize "cs-hero-box.dataSources.noSources"}}
+        </li>
+      {{/each}}
+    </ul>
+
+    <div class="cs-hero-box-data-sources__actions">
+      <button type="button" data-action="addSource">
+        <i class="fas fa-plus"></i>
+        {{localize "cs-hero-box.dataSources.addSource"}}
+      </button>
+      <button type="button" data-action="createWorldJournal">
+        <i class="fas fa-book-medical"></i>
+        {{localize "cs-hero-box.dataSources.createJournal.button"}}
+      </button>
+      <button type="button" data-action="scanJournals">
+        <i class="fas fa-search"></i>
+        {{localize "cs-hero-box.dataSources.scanJournals"}}
+      </button>
+    </div>
+  </section>
+</div>

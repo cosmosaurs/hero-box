@@ -1,0 +1,306 @@
+{
+  "cs-hero-box": {
+    "name": "Hero in a Box",
+
+    "settings": {
+      "developerMode": {
+        "name": "Developer Mode",
+        "hint": "Enables debug logging and shows hidden compendiums."
+      },
+      "dataSources": {
+        "name": "Data Sources",
+        "hint": "Configure which compendiums or journals are used to load images, names, and tags."
+      },
+      "dataManager": {
+        "name": "Data Manager",
+        "button": "Open Data Manager",
+        "hint": "Open the main interface to manage images, names, and tags."
+      }
+    },
+
+    "keybindings": {
+      "openDataManager": {
+        "name": "Open Data Manager",
+        "hint": "Opens the Hero in a Box Data Manager window."
+      }
+    },
+
+    "button": {
+      "text": "Generate",
+      "tooltip": "Generate random actor using Hero in a Box",
+      "headerLabel": "Hero in a Box Config"
+    },
+
+    "tokenConfig": {
+      "freeze": {
+        "button": "Freeze to Actor",
+        "tooltip": "Creates a real Actor from this unlinked token, preserving its current appearance and name.",
+        "success": "Created actor: {name}",
+        "error": "Failed to freeze token."
+      }
+    },
+
+    "changelog": {
+      "title": "Hero in a Box Update",
+      "doNotShow": "Don't show for this version"
+    },
+
+    "dataManager": {
+      "title": "Data Manager",
+      "tabs": {
+        "images": "Images",
+        "names": "Names",
+        "tags": "Tags"
+      },
+      "selectJournal": "Select Target Journal",
+      "selectJournalFirst": "Please select a journal first.",
+      "addImage": "Add Image",
+      "importFolder": "Import Folder",
+      "addNameSet": "Add Name Set",
+      "addTag": "Add Tag",
+      "searchPlaceholder": "Search...",
+      "noImages": "No images found.",
+      "images": "images",
+      "selected": "selected",
+      "selectAll": "Select All",
+      "editTags": "Edit Tags",
+      "delete": "Delete",
+      "deleteConfirm": {
+        "title": "Confirm Deletion",
+        "content": "Are you sure you want to delete {name}? This cannot be undone."
+      },
+      "deleting": "Deleting {count} images...",
+      "deleted": "Deleted {count} images.",
+      "noSets": "No name sets found.",
+      "noTags": "No tags found.",
+      "test": "Test Generation",
+      "edit": "Edit",
+      "allCategories": "Categories",
+      "testResult": "Generated: {name}",
+      "createActor": "Create Actor",
+      "refreshTags": "Refresh Tags from Filenames"
+    },
+
+    "imagePicker": {
+      "title": "Select Image",
+      "select": "Select"
+    },
+
+    "imageImport": {
+      "title": "Import Images",
+      "modeSingle": "Single File",
+      "modeFolder": "Folder Scan",
+      "tokenPreview": "Token Preview",
+      "portraitPreview": "Portrait Preview",
+      "tokenUrl": "Token Image Path",
+      "tokenPlaceholder": "path/to/token.webp",
+      "browse": "Browse",
+      "tokenHint": "Select the image file for the token.",
+      "portraitUrl": "Portrait Image Path",
+      "portraitPlaceholder": "path/to/portrait.webp",
+      "portraitHint": "Select the image file for the portrait (optional).",
+      "folderNotes": "This will scan the selected folders for images. Files with the same name (ignoring extension) will be paired as token and portrait.",
+      "tokenFolder": "Token Folder",
+      "tokenFolderPlaceholder": "modules/my-module/tokens",
+      "tokenFolderHint": "Folder containing token images.",
+      "portraitFolder": "Portrait Folder",
+      "portraitFolderPlaceholder": "modules/my-module/portraits",
+      "portraitFolderHint": "Folder containing portrait images.",
+      "add": "Add Image",
+      "import": "Start Import",
+      "error": "An error occurred during import.",
+      "errorNoUrl": "Please provide at least one image URL.",
+      "errorNoFolder": "Please provide at least one folder path.",
+      "scanning": "Scanning folders...",
+      "noImages": "No images found in the selected folders.",
+      "success": "Successfully imported {count} images.",
+      "updated": "Updated {count} images."
+    },
+
+    "editor": {
+      "title": "Editor",
+      "imageTitle": "Edit Image: {name}",
+      "imageTitleMultiple": "Edit {count} Images",
+      "nameTitleNew": "New Name Set",
+      "nameTitleEdit": "Edit Name Set: {name}",
+      "tagTitleNew": "New Tag",
+      "tagTitleEdit": "Edit Tag: {name}",
+      "tokenPreview": "Token",
+      "portraitPreview": "Portrait",
+      "editingMultiple": "Editing Multiple Items",
+      "images": "Image Paths",
+      "settings": "Settings",
+      "tokenUrl": "Token URL",
+      "portraitUrl": "Portrait URL",
+      "scale": "Scale",
+      "dynamicRing": "Dynamic Token Ring",
+      "noTags": "No tags assigned",
+      "gender": "Gender",
+      "age": "Age",
+      "race": "Race",
+      "role": "Role",
+      "other": "Other",
+      "customTags": "Custom Tags",
+      "customPlaceholder": "Type and press Enter...",
+      "nameLabel": "Name Set Label",
+      "namePlaceholder": "e.g., Human Names",
+      "nameType": "Name Type",
+      "names": "Name List",
+      "namesPlaceholder": "Name 1, Name 2, Name 3...",
+      "addLocale": "Add Language",
+      "nameSaved": "Name set saved.",
+      "tagId": "Tag ID",
+      "tagIdHint": "Unique identifier (e.g., 'high-elf'). Cannot be changed once created.",
+      "tagLabel": "Label",
+      "tagLabelPlaceholder": "High Elf",
+      "tagLabelHint": "Display name for the tag.",
+      "tagCategory": "Category",
+      "parentRace": "Parent Race",
+      "selectRace": "Select Race...",
+      "tagErrorNoId": "Tag ID is required.",
+      "tagErrorBuiltin": "Cannot modify built-in tags.",
+      "tagErrorDuplicate": "A tag with this ID already exists."
+    },
+
+    "dataSources": {
+      "title": "Data Sources",
+      "notes": "Define where the module should look for images, names, and tag definitions. Sources are processed in order.",
+      "sources": "Active Sources",
+      "moveUp": "Move Up",
+      "moveDown": "Move Down",
+      "remove": "Remove Source",
+      "noSources": "No sources configured.",
+      "addSource": "Add Source",
+      "createJournal": {
+        "button": "Create New Journal",
+        "title": "New Journal",
+        "nameLabel": "Journal Name",
+        "success": "Created journal: {name}"
+      },
+      "scanJournals": "Scan for Journals",
+      "saved": "Settings saved. Reloading data...",
+      "autoDiscovered": "Found {count} new data journals.",
+      "noNewJournals": "No new data journals found.",
+      "noAvailable": "No available compendiums or journals found.",
+      "selectSource": "Select Data Source",
+      "source": "Source"
+    },
+
+    "form": {
+      "title": "Hero in a Box",
+      "titleEdit": "Edit: {name}",
+      "selectionMode": {
+        "tag": "By Tags",
+        "image": "Pick Image"
+      },
+      "labels": {
+        "race": "Race",
+        "subrace": "Subrace",
+        "gender": "Gender",
+        "age": "Age",
+        "role": "Role",
+        "images": "Selected Images",
+        "mode": "Token Mode",
+        "sourceActor": "Source Actor"
+      },
+      "btn": {
+        "addMore": "Add More",
+        "clearAll": "Clear All",
+        "pickImages": "Pick Images",
+        "update": "Update Actor",
+        "generate": "Create Actor"
+      },
+      "images": {
+        "hint": "Select specific images. If multiple are selected, one will be chosen randomly."
+      },
+      "sourceActor": {
+        "dropHint": "Drop Actor Here",
+        "hint": "Optional. Drop an actor to copy its stats and items to the new character.",
+        "wrongType": "Please drop an Actor."
+      }
+    },
+
+    "mode": {
+      "random": "Random (Unlinked)",
+      "randomTooltip": "Creates a token that changes appearance every time it is placed.",
+      "fixed": "Fixed (Linked)",
+      "fixedTooltip": "Creates a specific actor with a permanent appearance."
+    },
+
+    "actor": {
+      "created": "Created actor: {name}",
+      "randomFromImages": "Unknown Hero",
+      "randomPrefix": "Random"
+    },
+
+    "errors": {
+      "noImagesSelected": "Please select at least one image.",
+      "noImagesFound": "No images found matching the selected criteria.",
+      "packNotFound": "Compendium pack not found."
+    },
+
+    "tagCategory": {
+      "race": "Race",
+      "subrace": "Subrace",
+      "role": "Role",
+      "other": "Other",
+      "builtin": "System"
+    },
+
+    "nameType": {
+      "firstName": "First Name",
+      "lastName": "Last Name",
+      "nickname": "Nickname",
+      "clan": "Clan Name"
+    },
+
+    "gender": {
+      "m": "Male",
+      "f": "Female"
+    },
+
+    "age": {
+      "c": "Child",
+      "t": "Teen",
+      "y": "Young",
+      "a": "Adult",
+      "o": "Old"
+    },
+
+    "tags": {
+      "m": "Male",
+      "f": "Female",
+      "c": "Child",
+      "t": "Teen",
+      "y": "Young",
+      "a": "Adult",
+      "o": "Old",
+      "human": "Human",
+      "elf": "Elf",
+      "dwarf": "Dwarf",
+      "halfling": "Halfling",
+      "gnome": "Gnome",
+      "dragonborn": "Dragonborn",
+      "tiefling": "Tiefling",
+      "half-elf": "Half-Elf",
+      "orc": "Orc",
+      "half-orc": "Half-Orc",
+      "fighter": "Fighter",
+      "wizard": "Wizard",
+      "rogue": "Rogue",
+      "cleric": "Cleric",
+      "paladin": "Paladin",
+      "barbarian": "Barbarian",
+      "bard": "Bard",
+      "druid": "Druid",
+      "monk": "Monk",
+      "ranger": "Ranger",
+      "sorcerer": "Sorcerer",
+      "warlock": "Warlock",
+      "noble": "Noble",
+      "commoner": "Commoner",
+      "guard": "Guard",
+      "merchant": "Merchant"
+    }
+  }
+}

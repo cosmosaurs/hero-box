@@ -1,0 +1,1412 @@
+/* ========================================
+   shared window chrome styles
+   ======================================== */
+
+[id^="cs-hero-box-"].application {
+  border-radius: var(--cs-hero-box-radius-md);
+  overflow: hidden;
+  background: var(--cs-hero-box-bg-primary);
+}
+
+[id^="cs-hero-box-"] .window-header {
+  background: var(--cs-hero-box-bg-primary);
+  border: none;
+  position: relative;
+  display: flex;
+  flex-direction: row-reverse;
+}
+
+/* centered title sitting behind the header controls */
+[id^="cs-hero-box-"] .window-header .window-title {
+  position: absolute;
+  left: 0;
+  right: 0;
+  text-align: center;
+  pointer-events: none;
+  background: transparent;
+  color: var(--cs-hero-box-text-primary);
+  font-size: var(--cs-hero-box-font-size-xl);
+  margin: 0;
+  padding: 0;
+}
+
+/* make sure header buttons sit above the title */
+[id^="cs-hero-box-"] .window-header .header-control,
+[id^="cs-hero-box-"] .window-header button {
+  position: relative;
+  z-index: 1;
+}
+
+[id^="cs-hero-box-"] .window-content {
+  background: var(--cs-hero-box-bg-primary);
+}
+
+/* unified fieldset look across all dialogs */
+[id^="cs-hero-box-"] fieldset {
+  margin: 0;
+  padding: var(--cs-hero-box-spacing-sm);
+  border: 1px solid var(--cs-hero-box-border-color);
+  border-radius: var(--cs-hero-box-radius-md);
+  background: transparent;
+}
+
+[id^="cs-hero-box-"] legend {
+  padding: 0 var(--cs-hero-box-spacing-sm);
+  font-weight: bold;
+  font-size: var(--cs-hero-box-font-size-lg);
+  color: var(--cs-hero-box-text-primary);
+}
+
+/* ========================================
+   data sources config dialog
+   ======================================== */
+
+.cs-hero-box-data-sources {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  padding: var(--cs-hero-box-spacing-sm);
+  background: var(--cs-hero-box-bg-primary);
+}
+
+.cs-hero-box-data-sources .notes {
+  flex-shrink: 0;
+  margin-bottom: var(--cs-hero-box-spacing-md);
+}
+
+.cs-hero-box-data-sources__section {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+
+.cs-hero-box-data-sources__section h3 {
+  display: flex;
+  align-items: center;
+  gap: var(--cs-hero-box-spacing-sm);
+  margin-bottom: var(--cs-hero-box-spacing-sm);
+  padding-bottom: var(--cs-hero-box-spacing-xs);
+  border-bottom: 1px solid var(--cs-hero-box-border-color);
+  color: var(--cs-hero-box-text-primary);
+  flex-shrink: 0;
+}
+
+/* scrollable list of data source entries */
+.cs-hero-box-data-sources__list {
+  list-style: none;
+  margin: 0 0 var(--cs-hero-box-spacing-md) 0;
+  padding: 0;
+  flex: 1;
+  overflow-y: auto;
+  min-height: 0;
+}
+
+/* single data source row */
+.cs-hero-box-data-sources__item {
+  display: flex;
+  align-items: center;
+  gap: var(--cs-hero-box-spacing-sm);
+  padding: var(--cs-hero-box-spacing-sm);
+  background: var(--cs-hero-box-bg-secondary);
+  border-radius: var(--cs-hero-box-radius-md);
+  margin-bottom: var(--cs-hero-box-spacing-xs);
+}
+
+/* greyed out when disabled */
+.cs-hero-box-data-sources__item--disabled {
+  opacity: 0.5;
+}
+
+.cs-hero-box-data-sources__item--disabled .cs-hero-box-data-sources__name {
+  text-decoration: line-through;
+}
+
+.cs-hero-box-data-sources__name {
+  flex: 1;
+  font-weight: bold;
+  color: var(--cs-hero-box-text-primary);
+}
+
+.cs-hero-box-data-sources__type {
+  font-size: var(--cs-hero-box-font-size-md);
+  color: var(--cs-hero-box-text-muted);
+}
+
+/* up/down arrows for reordering sources */
+.cs-hero-box-data-sources__order-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-right: var(--cs-hero-box-spacing-xs);
+}
+
+.cs-hero-box-data-sources__move {
+  padding: 2px 4px;
+  background: none;
+  border: 1px solid var(--cs-hero-box-border-color);
+  border-radius: var(--cs-hero-box-radius-sm);
+  color: var(--cs-hero-box-text-muted);
+  cursor: pointer;
+  line-height: 1;
+  font-size: var(--cs-hero-box-font-size-xs);
+}
+
+.cs-hero-box-data-sources__move:hover:not(:disabled) {
+  background: var(--cs-hero-box-bg-hover);
+  color: var(--cs-hero-box-text-primary);
+}
+
+.cs-hero-box-data-sources__move:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+/* enable/disable toggle checkbox */
+.cs-hero-box-data-sources__toggle {
+  display: flex;
+  align-items: center;
+  margin-right: var(--cs-hero-box-spacing-xs);
+}
+
+.cs-hero-box-data-sources__toggle input {
+  margin: 0;
+  cursor: pointer;
+}
+
+/* remove source button */
+.cs-hero-box-data-sources__remove {
+  background: none;
+  border: none;
+  color: var(--cs-hero-box-text-muted);
+  cursor: pointer;
+  padding: var(--cs-hero-box-spacing-xs);
+}
+
+.cs-hero-box-data-sources__remove:hover {
+  color: var(--color-level-error);
+}
+
+/* empty state when no sources are configured */
+.cs-hero-box-data-sources__empty {
+  padding: var(--cs-hero-box-spacing-lg);
+  text-align: center;
+  color: var(--cs-hero-box-text-muted);
+  font-style: italic;
+}
+
+/* bottom action buttons (add journal, add compendium, etc) */
+.cs-hero-box-data-sources__actions {
+  display: flex;
+  gap: var(--cs-hero-box-spacing-sm);
+  flex-wrap: nowrap;
+  flex-shrink: 0;
+}
+
+.cs-hero-box-data-sources__actions button {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--cs-hero-box-spacing-xs);
+  white-space: nowrap;
+  padding: var(--cs-hero-box-spacing-sm);
+}
+
+[id^="cs-hero-box-data-sources"] .form-footer {
+  padding: var(--cs-hero-box-spacing-sm);
+  background: var(--cs-hero-box-bg-primary);
+}
+
+[id^="cs-hero-box-data-sources"] .form-footer button {
+  width: 100%;
+}
+
+/* ========================================
+   data manager — the main beast
+   ======================================== */
+
+/* hide the default title, we use tabs instead */
+.cs-hero-box-data-manager .window-header {
+  padding: var(--cs-hero-box-spacing-xs) var(--cs-hero-box-spacing-sm);
+}
+
+.cs-hero-box-data-manager .window-header .window-title {
+  display: none;
+}
+
+.cs-hero-box-data-manager .window-content {
+  padding: 0;
+}
+
+.cs-hero-box-data-manager {
+  display: flex;
+  flex-direction: column;
+  width: var(--cs-hero-box-manager-width);
+  height: var(--cs-hero-box-manager-height);
+  background: var(--cs-hero-box-bg-primary);
+  color: var(--cs-hero-box-text-primary);
+}
+
+/* top tab bar — images / names / tags */
+.cs-hero-box-data-manager__tabs {
+  display: flex;
+  justify-content: center;
+  gap: 0;
+  padding: 0;
+  border-top: 1px solid var(--cs-hero-box-border-color);
+  border-bottom: 1px solid var(--cs-hero-box-border-color);
+  flex-shrink: 0;
+  background: var(--cs-hero-box-bg-primary);
+}
+
+.cs-hero-box-data-manager__tab {
+  flex: 1;
+  padding: var(--cs-hero-box-spacing-md) var(--cs-hero-box-spacing-xl);
+  background: transparent;
+  border: none;
+  border-right: 1px solid var(--cs-hero-box-border-color);
+  border-radius: 0;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--cs-hero-box-spacing-sm);
+  font-size: var(--cs-hero-box-font-size-lg);
+  font-weight: normal;
+  color: var(--cs-hero-box-text-muted);
+  transition: color var(--cs-hero-box-transition-fast), background var(--cs-hero-box-transition-fast);
+}
+
+.cs-hero-box-data-manager__tab:last-child {
+  border-right: none;
+}
+
+.cs-hero-box-data-manager__tab:hover {
+  background: var(--cs-hero-box-bg-hover);
+  color: var(--cs-hero-box-text-secondary);
+}
+
+.cs-hero-box-data-manager__tab.active {
+  background: transparent;
+  color: var(--color-border-highlight);
+  font-weight: bold;
+}
+
+.cs-hero-box-data-manager__tab.active i {
+  color: var(--color-border-highlight);
+}
+
+/* header row with journal selector and action buttons */
+.cs-hero-box-data-manager__header {
+  display: flex;
+  align-items: center;
+  gap: var(--cs-hero-box-spacing-sm);
+  padding: var(--cs-hero-box-spacing-sm);
+  border-bottom: 1px solid var(--cs-hero-box-border-color);
+  flex-shrink: 0;
+  background: var(--cs-hero-box-bg-primary);
+}
+
+.cs-hero-box-data-manager__controls {
+  display: flex;
+  gap: var(--cs-hero-box-spacing-sm);
+  align-items: center;
+  flex-wrap: wrap;
+  width: 100%;
+}
+
+.cs-hero-box-data-manager__controls select {
+  flex: 1;
+  min-width: 150px;
+  height: 28px;
+  padding: 0 var(--cs-hero-box-spacing-sm);
+}
+
+.cs-hero-box-data-manager__controls button {
+  height: 28px;
+  padding: 0 var(--cs-hero-box-spacing-sm);
+  display: flex;
+  align-items: center;
+  gap: var(--cs-hero-box-spacing-xs);
+}
+
+/* main content area — sidebar + grid/list side by side */
+.cs-hero-box-data-manager__body {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+  min-height: 0;
+  background: var(--cs-hero-box-bg-primary);
+}
+
+/* left sidebar with tag filters */
+.cs-hero-box-data-manager__sidebar {
+  width: var(--cs-hero-box-sidebar-width);
+  border-right: 1px solid var(--cs-hero-box-border-color);
+  padding: var(--cs-hero-box-spacing-sm);
+  overflow-y: scroll;
+  display: flex;
+  flex-direction: column;
+  gap: var(--cs-hero-box-spacing-sm);
+  flex-shrink: 0;
+  background: var(--cs-hero-box-bg-primary);
+}
+
+/* search input in the sidebar */
+.cs-hero-box-data-manager__search-container {
+  flex-shrink: 0;
+}
+
+.cs-hero-box-data-manager__search {
+  width: 100%;
+  padding: var(--cs-hero-box-spacing-xs) var(--cs-hero-box-spacing-sm);
+  background: var(--cs-hero-box-bg-secondary);
+  border: 1px solid var(--cs-hero-box-border-color);
+  border-radius: var(--cs-hero-box-radius-sm);
+  color: var(--cs-hero-box-text-primary);
+  font-size: var(--cs-hero-box-font-size-md);
+}
+
+.cs-hero-box-data-manager__search::placeholder {
+  color: var(--cs-hero-box-text-muted);
+}
+
+/* tag filter groups in the sidebar */
+.cs-hero-box-data-manager__tag-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--cs-hero-box-spacing-xs);
+}
+
+.cs-hero-box-data-manager__tag-group {
+  margin-bottom: var(--cs-hero-box-spacing-sm);
+}
+
+/* collapsible group header */
+.cs-hero-box-data-manager__tag-group-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--cs-hero-box-spacing-xs) 0;
+  cursor: pointer;
+  user-select: none;
+  border-bottom: 1px solid var(--cs-hero-box-border-color);
+  margin-bottom: var(--cs-hero-box-spacing-xs);
+}
+
+.cs-hero-box-data-manager__tag-group-header:hover {
+  color: var(--cs-hero-box-text-primary);
+}
+
+.cs-hero-box-data-manager__tag-group-header h4 {
+  margin: 0;
+  font-size: var(--cs-hero-box-font-size-sm);
+  color: var(--cs-hero-box-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  display: flex;
+  align-items: center;
+  gap: var(--cs-hero-box-spacing-xs);
+}
+
+.cs-hero-box-data-manager__tag-group-header h4 i {
+  width: 16px;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+/* chevron that rotates when collapsed */
+.cs-hero-box-data-manager__tag-group-toggle {
+  font-size: var(--cs-hero-box-font-size-sm);
+  color: var(--cs-hero-box-text-muted);
+  transition: transform var(--cs-hero-box-transition-fast);
+}
+
+.cs-hero-box-data-manager__tag-group.collapsed .cs-hero-box-data-manager__tag-group-toggle {
+  transform: rotate(-90deg);
+}
+
+/* animated collapsible content */
+.cs-hero-box-data-manager__tag-group-content {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  overflow: hidden;
+  max-height: 500px;
+  transition: max-height 0.3s ease, opacity 0.2s ease;
+  opacity: 1;
+}
+
+.cs-hero-box-data-manager__tag-group.collapsed .cs-hero-box-data-manager__tag-group-content {
+  max-height: 0;
+  opacity: 0;
+}
+
+/* skip animation when restoring collapsed state on re-render */
+.cs-hero-box-data-manager__tag-group.no-transition .cs-hero-box-data-manager__tag-group-content,
+.cs-hero-box-data-manager__tag-group.no-transition .cs-hero-box-data-manager__tag-group-toggle {
+  transition: none;
+}
+
+/* individual tag filter buttons */
+.cs-hero-box-data-manager__tag {
+  display: flex;
+  justify-content: space-between;
+  width: 100%;
+  padding: var(--cs-hero-box-spacing-xs) var(--cs-hero-box-spacing-sm);
+  border: 1px solid transparent;
+  border-radius: var(--cs-hero-box-radius-sm);
+  background: var(--cs-hero-box-bg-secondary);
+  cursor: pointer;
+  font-size: var(--cs-hero-box-font-size-md);
+  color: var(--cs-hero-box-text-secondary);
+  transition: all var(--cs-hero-box-transition-fast);
+}
+
+.cs-hero-box-data-manager__tag:hover {
+  background: var(--cs-hero-box-bg-hover);
+  color: var(--cs-hero-box-text-primary);
+}
+
+/* active/selected tag — orange glow */
+.cs-hero-box-data-manager__tag.active {
+  background: rgba(255, 128, 0, 0.15);
+  color: var(--cs-hero-box-text-primary);
+  text-shadow: 0 0 8px rgba(255, 128, 0, 0.6);
+}
+
+.cs-hero-box-data-manager__tag.active .cs-hero-box-data-manager__tag-name {
+  text-shadow: 0 0 8px rgba(255, 128, 0, 0.6);
+}
+
+.cs-hero-box-data-manager__tag.active .cs-hero-box-data-manager__tag-count {
+  color: var(--cs-hero-box-text-primary);
+  text-shadow: 0 0 6px rgba(255, 128, 0, 0.4);
+}
+
+.cs-hero-box-data-manager__tag-count {
+  opacity: 0.7;
+}
+
+/* right side main content panel */
+.cs-hero-box-data-manager__main {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  background: var(--cs-hero-box-bg-primary);
+}
+
+/* scrollable image grid container */
+.cs-hero-box-data-manager__grid-container {
+  flex: 1;
+  overflow-y: scroll;
+  padding: var(--cs-hero-box-spacing-sm);
+  min-height: 0;
+  background: var(--cs-hero-box-bg-primary);
+}
+
+/* css grid for image cards */
+.cs-hero-box-data-manager__grid {
+  display: grid;
+  grid-template-columns: repeat(5, var(--cs-hero-box-card-width));
+  gap: 8px;
+  justify-content: center;
+}
+
+/* image card styling */
+.cs-hero-box-data-manager__card {
+  width: var(--cs-hero-box-card-width);
+  background: var(--cs-hero-box-bg-secondary);
+  border: 2px solid var(--cs-hero-box-border-color);
+  border-radius: var(--cs-hero-box-radius-md);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  cursor: pointer;
+  transition: border-color var(--cs-hero-box-transition-fast), box-shadow var(--cs-hero-box-transition-fast);
+  position: relative;
+}
+
+.cs-hero-box-data-manager__card:hover {
+  border-color: var(--color-border-highlight);
+}
+
+/* selected card — blue highlight */
+.cs-hero-box-data-manager__card.selected {
+  border-color: #0078d4;
+  box-shadow: 0 0 0 2px rgba(0, 120, 212, 0.4);
+  background: rgba(0, 120, 212, 0.1);
+}
+
+/* last selected card gets a stronger orange highlight */
+.cs-hero-box-data-manager__card.selected.last-selected {
+  border-color: var(--color-border-highlight);
+  box-shadow: 0 0 0 2px var(--color-border-highlight);
+  background: transparent;
+}
+
+/* select-all mode — all cards get the blue treatment */
+.cs-hero-box-data-manager__grid.select-all .cs-hero-box-data-manager__card {
+  border-color: #0078d4;
+  box-shadow: 0 0 0 2px rgba(0, 120, 212, 0.4);
+  background: rgba(0, 120, 212, 0.1);
+}
+
+.cs-hero-box-data-manager__grid.select-all .cs-hero-box-data-manager__card.last-selected {
+  border-color: var(--color-border-highlight);
+  box-shadow: 0 0 0 2px var(--color-border-highlight);
+  background: transparent;
+}
+
+/* square image thumbnail inside the card */
+.cs-hero-box-data-manager__image-container {
+  width: var(--cs-hero-box-card-width);
+  height: var(--cs-hero-box-card-width);
+  overflow: hidden;
+}
+
+.cs-hero-box-data-manager__image-container img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform var(--cs-hero-box-transition-fast);
+}
+
+.cs-hero-box-data-manager__image-container:hover img {
+  transform: scale(1.05);
+}
+
+/* filename label below the image */
+.cs-hero-box-data-manager__card-info {
+  padding: var(--cs-hero-box-spacing-xs);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  background: var(--cs-hero-box-bg-secondary);
+}
+
+.cs-hero-box-data-manager__card-name {
+  font-size: var(--cs-hero-box-font-size-xs);
+  font-weight: bold;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--cs-hero-box-text-primary);
+}
+
+/* scrollable content area for names/tags tabs */
+.cs-hero-box-data-manager__content {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--cs-hero-box-spacing-sm);
+  min-height: 0;
+  background: var(--cs-hero-box-bg-primary);
+}
+
+/* empty state placeholder */
+.cs-hero-box-data-manager__empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  min-height: 200px;
+  color: var(--cs-hero-box-text-muted);
+}
+
+.cs-hero-box-data-manager__empty i {
+  font-size: 3rem;
+  margin-bottom: var(--cs-hero-box-spacing-lg);
+}
+
+/* bottom toolbar with selection info and action buttons */
+.cs-hero-box-data-manager__toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--cs-hero-box-spacing-sm);
+  border-top: 1px solid var(--cs-hero-box-border-color);
+  background: var(--cs-hero-box-bg-secondary);
+  flex-shrink: 0;
+  gap: var(--cs-hero-box-spacing-md);
+}
+
+.cs-hero-box-data-manager__toolbar-info {
+  display: flex;
+  gap: var(--cs-hero-box-spacing-lg);
+  font-size: var(--cs-hero-box-font-size-md);
+  color: var(--cs-hero-box-text-muted);
+  flex: 1;
+}
+
+/* selection count gets bold when something is selected */
+.cs-hero-box-data-manager__toolbar.has-selection .cs-hero-box-data-manager__selection-count {
+  color: var(--cs-hero-box-text-primary);
+  font-weight: bold;
+}
+
+/* toolbar action buttons */
+.cs-hero-box-data-manager__toolbar-actions {
+  display: flex;
+  gap: var(--cs-hero-box-spacing-xs);
+  align-items: center;
+}
+
+.cs-hero-box-data-manager__toolbar-actions button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--cs-hero-box-spacing-xs);
+  padding: var(--cs-hero-box-spacing-xs) var(--cs-hero-box-spacing-sm);
+  min-width: 32px;
+  height: 28px;
+}
+
+/* vertical separator between button groups */
+.cs-hero-box-data-manager__toolbar-actions .cs-hero-box-toolbar-separator {
+  width: 1px;
+  height: 20px;
+  background: var(--cs-hero-box-border-color);
+  margin: 0 var(--cs-hero-box-spacing-xs);
+}
+
+/* primary action button (confirm, etc) */
+.cs-hero-box-data-manager__toolbar-actions button.primary {
+  background: var(--color-border-highlight);
+  color: white;
+}
+
+.cs-hero-box-data-manager__toolbar-actions button.primary:hover {
+  filter: brightness(1.1);
+}
+
+/* danger button (delete) */
+.cs-hero-box-data-manager__toolbar-actions button.danger {
+  color: var(--color-level-error);
+}
+
+.cs-hero-box-data-manager__toolbar-actions button.danger:hover {
+  background: var(--color-level-error);
+  color: white;
+}
+
+.cs-hero-box-data-manager__toolbar-actions button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* spacer divs used by virtual scroll for correct scrollbar sizing */
+.cs-hero-box-data-manager__virtual-spacer-top,
+.cs-hero-box-data-manager__virtual-spacer-bottom {
+  width: 100%;
+  pointer-events: none;
+}
+
+/* ========================================
+   names tab — list of name sets
+   ======================================== */
+
+.cs-hero-box-data-manager__name-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--cs-hero-box-spacing-sm);
+}
+
+/* single name set card with grid layout */
+.cs-hero-box-data-manager__name-item {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  grid-template-rows: auto auto auto;
+  gap: var(--cs-hero-box-spacing-xs) var(--cs-hero-box-spacing-sm);
+  padding: var(--cs-hero-box-spacing-md);
+  background: var(--cs-hero-box-bg-secondary);
+  border: 1px solid var(--cs-hero-box-border-color);
+  border-radius: var(--cs-hero-box-radius-md);
+}
+
+.cs-hero-box-data-manager__name-header {
+  grid-column: 1;
+  display: flex;
+  align-items: center;
+  gap: var(--cs-hero-box-spacing-sm);
+}
+
+.cs-hero-box-data-manager__name-title {
+  font-weight: bold;
+  color: var(--cs-hero-box-text-primary);
+}
+
+/* type badge (firstName, lastName, etc) */
+.cs-hero-box-data-manager__name-type {
+  font-size: var(--cs-hero-box-font-size-md);
+  padding: 2px var(--cs-hero-box-spacing-sm);
+  background: var(--cs-hero-box-bg-tertiary);
+  border-radius: var(--cs-hero-box-radius-sm);
+  color: var(--cs-hero-box-text-secondary);
+}
+
+/* meta info — tags and locales */
+.cs-hero-box-data-manager__name-meta {
+  grid-column: 1;
+  display: flex;
+  gap: var(--cs-hero-box-spacing-lg);
+  font-size: var(--cs-hero-box-font-size-md);
+  color: var(--cs-hero-box-text-muted);
+}
+
+.cs-hero-box-data-manager__name-tags,
+.cs-hero-box-data-manager__name-locales {
+  display: flex;
+  align-items: center;
+  gap: var(--cs-hero-box-spacing-xs);
+}
+
+/* source label at the bottom */
+.cs-hero-box-data-manager__name-source {
+  grid-column: 1;
+  font-size: var(--cs-hero-box-font-size-sm);
+  color: var(--cs-hero-box-text-muted);
+  display: flex;
+  align-items: center;
+  gap: var(--cs-hero-box-spacing-xs);
+}
+
+/* edit/delete/test buttons on the right side */
+.cs-hero-box-data-manager__name-actions {
+  grid-column: 2;
+  grid-row: 1 / -1;
+  display: flex;
+  gap: var(--cs-hero-box-spacing-xs);
+  align-items: flex-start;
+}
+
+.cs-hero-box-data-manager__name-actions button {
+  padding: 6px var(--cs-hero-box-spacing-sm);
+}
+
+/* ========================================
+   tags tab — tag management list
+   ======================================== */
+
+.cs-hero-box-data-manager__tag-table {
+  display: flex;
+  flex-direction: column;
+  gap: var(--cs-hero-box-spacing-sm);
+}
+
+/* single tag row — 5-column grid */
+.cs-hero-box-data-manager__tag-row {
+  display: grid;
+  grid-template-columns: 180px 1fr 120px auto auto;
+  gap: var(--cs-hero-box-spacing-md);
+  align-items: center;
+  padding: var(--cs-hero-box-spacing-md);
+  background: var(--cs-hero-box-bg-secondary);
+  border: 1px solid var(--cs-hero-box-border-color);
+  border-radius: var(--cs-hero-box-radius-md);
+}
+
+/* subrace rows are indented with a left border */
+.cs-hero-box-data-manager__tag-row--subrace {
+  margin-left: var(--cs-hero-box-spacing-lg);
+  border-left: 3px solid var(--cs-hero-box-border-color);
+}
+
+.cs-hero-box-data-manager__tag-row--subrace .cs-hero-box-data-manager__tag-id {
+  padding-left: var(--cs-hero-box-spacing-sm);
+}
+
+.cs-hero-box-data-manager__tag-id {
+  font-family: monospace;
+  color: var(--cs-hero-box-text-primary);
+}
+
+.cs-hero-box-data-manager__tag-label {
+  color: var(--cs-hero-box-text-secondary);
+}
+
+/* category badge pill */
+.cs-hero-box-data-manager__category-badge {
+  font-size: var(--cs-hero-box-font-size-sm);
+  padding: 2px var(--cs-hero-box-spacing-sm);
+  background: var(--cs-hero-box-bg-tertiary);
+  border-radius: var(--cs-hero-box-radius-sm);
+  color: var(--cs-hero-box-text-secondary);
+}
+
+.cs-hero-box-data-manager__tag-source {
+  font-size: var(--cs-hero-box-font-size-sm);
+  color: var(--cs-hero-box-text-muted);
+  display: flex;
+  align-items: center;
+  gap: var(--cs-hero-box-spacing-xs);
+}
+
+.cs-hero-box-data-manager__tag-actions {
+  display: flex;
+  gap: var(--cs-hero-box-spacing-xs);
+}
+
+/* ========================================
+   hover popup that shows on card mouseover
+   ======================================== */
+
+.cs-hero-box-card-popup {
+  position: fixed;
+  width: 280px;
+  background: var(--cs-hero-box-bg-primary);
+  border: 1px solid var(--cs-hero-box-border-color);
+  border-radius: var(--cs-hero-box-radius-md);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
+  padding: var(--cs-hero-box-spacing-sm);
+  z-index: 10000;
+  pointer-events: none;
+  transition: opacity 0.15s ease;
+}
+
+/* side-by-side token + portrait previews */
+.cs-hero-box-card-popup__images {
+  display: flex;
+  gap: var(--cs-hero-box-spacing-sm);
+  justify-content: center;
+  margin-bottom: var(--cs-hero-box-spacing-sm);
+}
+
+.cs-hero-box-card-popup__image {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.cs-hero-box-card-popup__image img {
+  width: 120px;
+  height: 120px;
+  object-fit: cover;
+  border-radius: var(--cs-hero-box-radius-md);
+  border: 1px solid var(--cs-hero-box-border-color);
+}
+
+/* placeholder when no image url is set */
+.cs-hero-box-card-popup__placeholder {
+  width: 120px;
+  height: 120px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--cs-hero-box-bg-secondary);
+  border-radius: var(--cs-hero-box-radius-md);
+  border: 1px dashed var(--cs-hero-box-border-color);
+  color: var(--cs-hero-box-text-muted);
+  font-size: 1.5rem;
+}
+
+.cs-hero-box-card-popup__image span {
+  font-size: var(--cs-hero-box-font-size-xs);
+  color: var(--cs-hero-box-text-muted);
+}
+
+/* tags list inside the popup */
+.cs-hero-box-card-popup__tags {
+  font-size: var(--cs-hero-box-font-size-sm);
+  color: var(--cs-hero-box-text-secondary);
+  line-height: 1.4;
+  word-break: break-word;
+  border-top: 1px solid var(--cs-hero-box-border-color);
+  padding-top: var(--cs-hero-box-spacing-sm);
+}
+
+.cs-hero-box-card-popup__tags strong {
+  color: var(--cs-hero-box-text-primary);
+}
+
+/* source info at the bottom of the popup */
+.cs-hero-box-card-popup__source {
+  font-size: var(--cs-hero-box-font-size-xs);
+  color: var(--cs-hero-box-text-muted);
+  padding-top: var(--cs-hero-box-spacing-xs);
+  border-top: 1px solid var(--cs-hero-box-border-color);
+  margin-top: var(--cs-hero-box-spacing-xs);
+  display: flex;
+  align-items: center;
+  gap: var(--cs-hero-box-spacing-xs);
+}
+
+/* ========================================
+   picker mode — when used as image selector
+   ======================================== */
+
+.cs-hero-box-data-manager.picker-mode {
+  width: var(--cs-hero-box-manager-width);
+  height: var(--cs-hero-box-manager-height);
+}
+
+/* confirm button in picker mode */
+.cs-hero-box-data-manager.picker-mode .cs-hero-box-data-manager__toolbar-actions button[data-action="confirmSelection"] {
+  background: var(--color-border-highlight);
+  color: white;
+}
+
+.cs-hero-box-data-manager.picker-mode .cs-hero-box-data-manager__toolbar-actions button[data-action="confirmSelection"]:disabled {
+  background: var(--cs-hero-box-bg-tertiary);
+  color: var(--cs-hero-box-text-muted);
+}
+
+/* ========================================
+   image import dialog
+   ======================================== */
+
+.cs-hero-box-image-import {
+  padding: var(--cs-hero-box-spacing-sm);
+  background: var(--cs-hero-box-bg-primary);
+  color: var(--cs-hero-box-text-primary);
+}
+
+.cs-hero-box-image-import input {
+  background: var(--cs-hero-box-bg-secondary);
+  border: 1px solid var(--cs-hero-box-border-color);
+  color: var(--cs-hero-box-text-primary);
+}
+
+/* tab switcher (single / folder import) */
+.cs-hero-box-image-import__tabs {
+  display: flex;
+  margin-bottom: var(--cs-hero-box-spacing-lg);
+  border: 1px solid var(--cs-hero-box-border-color);
+  border-radius: var(--cs-hero-box-radius-md);
+  overflow: hidden;
+}
+
+.cs-hero-box-image-import__tab {
+  flex: 1;
+  padding: var(--cs-hero-box-spacing-sm);
+  background: var(--cs-hero-box-bg-secondary);
+  border: none;
+  border-right: 1px solid var(--cs-hero-box-border-color);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--cs-hero-box-spacing-sm);
+  font-size: var(--cs-hero-box-font-size-md);
+  color: var(--cs-hero-box-text-muted);
+}
+
+.cs-hero-box-image-import__tab:last-child {
+  border-right: none;
+}
+
+.cs-hero-box-image-import__tab.active {
+  background: var(--cs-hero-box-bg-primary);
+  color: var(--color-border-highlight);
+}
+
+/* token/portrait preview area in import dialog */
+.cs-hero-box-image-import__previews {
+  display: flex;
+  gap: var(--cs-hero-box-spacing-lg);
+  justify-content: center;
+  margin-bottom: var(--cs-hero-box-spacing-lg);
+}
+
+/* ========================================
+   editor — image/name/tag editing dialog
+   ======================================== */
+
+.cs-hero-box-editor {
+  display: flex;
+  flex-direction: column;
+  gap: var(--cs-hero-box-spacing-md);
+  padding: var(--cs-hero-box-spacing-sm);
+  height: 100%;
+  overflow: hidden;
+  background: var(--cs-hero-box-bg-primary);
+  color: var(--cs-hero-box-text-primary);
+}
+
+/* token + portrait preview boxes at the top */
+.cs-hero-box-editor--image .cs-hero-box-editor__previews {
+  display: flex;
+  gap: var(--cs-hero-box-spacing-lg);
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.cs-hero-box-editor__preview {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--cs-hero-box-spacing-sm);
+}
+
+.cs-hero-box-editor__preview label {
+  font-size: var(--cs-hero-box-font-size-md);
+  font-weight: bold;
+  color: var(--cs-hero-box-text-primary);
+}
+
+.cs-hero-box-editor__preview img {
+  width: 128px;
+  height: 128px;
+  object-fit: cover;
+  border-radius: var(--cs-hero-box-radius-md);
+  border: 1px solid var(--cs-hero-box-border-color);
+}
+
+/* placeholder when no image is set */
+.cs-hero-box-editor__no-image {
+  width: 128px;
+  height: 128px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--cs-hero-box-bg-secondary);
+  border: 1px dashed var(--cs-hero-box-border-color);
+  border-radius: var(--cs-hero-box-radius-md);
+  color: var(--cs-hero-box-text-muted);
+  font-size: 2rem;
+}
+
+/* info banner shown when editing multiple images at once */
+.cs-hero-box-editor__multi-info {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--cs-hero-box-spacing-sm);
+  padding: var(--cs-hero-box-spacing-lg);
+  background: var(--cs-hero-box-bg-secondary);
+  border-radius: var(--cs-hero-box-radius-md);
+  font-size: var(--cs-hero-box-font-size-lg);
+  color: var(--cs-hero-box-text-secondary);
+}
+
+.cs-hero-box-editor__multi-info i {
+  font-size: 1.5rem;
+  color: var(--color-border-highlight);
+}
+
+/* scrollable area for the rest of the editor form */
+.cs-hero-box-editor__scrollable {
+  flex: 1;
+  overflow-y: auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--cs-hero-box-spacing-sm);
+  padding-right: var(--cs-hero-box-spacing-xs);
+}
+
+/* fieldset sections inside the editor */
+.cs-hero-box-editor__section {
+  margin: 0;
+  padding: var(--cs-hero-box-spacing-sm);
+  flex-shrink: 0;
+}
+
+.cs-hero-box-editor__section .form-group {
+  margin-bottom: var(--cs-hero-box-spacing-sm);
+}
+
+.cs-hero-box-editor__section .form-group:last-child {
+  margin-bottom: 0;
+}
+
+.cs-hero-box-editor__section .form-fields {
+  display: flex;
+  gap: var(--cs-hero-box-spacing-sm);
+  align-items: center;
+}
+
+.cs-hero-box-editor__section .form-fields input {
+  flex: 1;
+  background: var(--cs-hero-box-bg-tertiary);
+  border: 1px solid var(--cs-hero-box-border-color);
+  color: var(--cs-hero-box-text-primary);
+}
+
+.cs-hero-box-editor__section .form-fields button {
+  flex-shrink: 0;
+}
+
+/* inline settings row for scale + ring toggle */
+.cs-hero-box-editor__settings-row {
+  display: flex;
+  align-items: center;
+  gap: var(--cs-hero-box-spacing-lg);
+}
+
+.cs-hero-box-editor__scale-group {
+  display: flex;
+  align-items: center;
+  gap: var(--cs-hero-box-spacing-sm);
+}
+
+.cs-hero-box-editor__scale-group input[type="number"] {
+  width: 60px;
+  height: 28px;
+  text-align: center;
+  background: var(--cs-hero-box-bg-tertiary);
+  border: 1px solid var(--cs-hero-box-border-color);
+  color: var(--cs-hero-box-text-primary);
+}
+
+.cs-hero-box-editor__checkbox-inline {
+  display: flex;
+  align-items: center;
+  gap: var(--cs-hero-box-spacing-xs);
+  cursor: pointer;
+  color: var(--cs-hero-box-text-secondary);
+  white-space: nowrap;
+}
+
+.cs-hero-box-editor__checkbox-inline input {
+  margin: 0;
+}
+
+/* tag category sections with checkboxes */
+.cs-hero-box-editor__categories {
+  display: flex;
+  flex-direction: column;
+  gap: var(--cs-hero-box-spacing-sm);
+}
+
+.cs-hero-box-editor__tag-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--cs-hero-box-spacing-xs) var(--cs-hero-box-spacing-lg);
+}
+
+.cs-hero-box-editor__tag-option {
+  display: flex;
+  align-items: center;
+  gap: var(--cs-hero-box-spacing-xs);
+  font-size: var(--cs-hero-box-font-size-lg);
+  cursor: pointer;
+  color: var(--cs-hero-box-text-secondary);
+}
+
+.cs-hero-box-editor__tag-option input {
+  margin: 0;
+}
+
+.cs-hero-box-editor__tag-option--subrace {
+  font-size: var(--cs-hero-box-font-size-md);
+  color: var(--cs-hero-box-text-muted);
+}
+
+/* race list with indented subraces in the editor */
+.cs-hero-box-editor__race-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--cs-hero-box-spacing-sm);
+}
+
+.cs-hero-box-editor__race-item {
+  display: flex;
+  flex-direction: column;
+  gap: var(--cs-hero-box-spacing-xs);
+}
+
+.cs-hero-box-editor__subraces {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--cs-hero-box-spacing-xs) var(--cs-hero-box-spacing-lg);
+  margin-left: var(--cs-hero-box-spacing-xl);
+  padding-left: var(--cs-hero-box-spacing-sm);
+  border-left: 2px solid var(--cs-hero-box-border-color);
+}
+
+/* custom tag chips */
+.cs-hero-box-editor__custom-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--cs-hero-box-spacing-sm);
+  margin-bottom: var(--cs-hero-box-spacing-sm);
+}
+
+.cs-hero-box-editor__custom-tag {
+  display: flex;
+  align-items: center;
+  gap: var(--cs-hero-box-spacing-xs);
+  padding: var(--cs-hero-box-spacing-xs) var(--cs-hero-box-spacing-sm);
+  background: var(--cs-hero-box-bg-tertiary);
+  border-radius: var(--cs-hero-box-radius-sm);
+  font-size: var(--cs-hero-box-font-size-md);
+  color: var(--cs-hero-box-text-secondary);
+}
+
+.cs-hero-box-editor__custom-tag button {
+  padding: 0;
+  background: none;
+  border: none;
+  cursor: pointer;
+  opacity: 0.7;
+  line-height: 1;
+  color: var(--cs-hero-box-text-muted);
+}
+
+.cs-hero-box-editor__custom-tag button:hover {
+  opacity: 1;
+}
+
+/* input + button for adding custom tags */
+.cs-hero-box-editor__custom-add {
+  display: flex;
+  gap: var(--cs-hero-box-spacing-sm);
+}
+
+.cs-hero-box-editor__custom-input {
+  flex: 1;
+  background: var(--cs-hero-box-bg-tertiary);
+  border: 1px solid var(--cs-hero-box-border-color);
+  color: var(--cs-hero-box-text-primary);
+}
+
+.cs-hero-box-editor__custom-add button {
+  flex-shrink: 0;
+}
+
+/* locale entries for name sets */
+.cs-hero-box-editor__locales {
+  display: flex;
+  flex-direction: column;
+  gap: var(--cs-hero-box-spacing-sm);
+}
+
+.cs-hero-box-editor__locale-set {
+  display: flex;
+  flex-direction: column;
+  gap: var(--cs-hero-box-spacing-xs);
+  padding: var(--cs-hero-box-spacing-sm);
+  background: var(--cs-hero-box-bg-tertiary);
+  border-radius: var(--cs-hero-box-radius-md);
+}
+
+.cs-hero-box-editor__locale-header {
+  display: flex;
+  gap: var(--cs-hero-box-spacing-sm);
+  align-items: center;
+}
+
+.cs-hero-box-editor__locale-header select {
+  flex: 1;
+  background: var(--cs-hero-box-bg-secondary);
+  border: 1px solid var(--cs-hero-box-border-color);
+  color: var(--cs-hero-box-text-primary);
+}
+
+/* remove locale button */
+.cs-hero-box-editor__remove-locale {
+  padding: var(--cs-hero-box-spacing-xs) var(--cs-hero-box-spacing-sm);
+  background: none;
+  border: 1px solid var(--cs-hero-box-border-color);
+  border-radius: var(--cs-hero-box-radius-sm);
+  color: var(--cs-hero-box-text-muted);
+  cursor: pointer;
+}
+
+.cs-hero-box-editor__remove-locale:hover {
+  background: var(--color-level-error);
+  border-color: var(--color-level-error);
+  color: white;
+}
+
+.cs-hero-box-editor__locale-set input[type="text"] {
+  width: 100%;
+  background: var(--cs-hero-box-bg-secondary);
+  border: 1px solid var(--cs-hero-box-border-color);
+  color: var(--cs-hero-box-text-primary);
+}
+
+/* add locale button — dashed border style */
+.cs-hero-box-editor__add-locale {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--cs-hero-box-spacing-sm);
+  width: 100%;
+  padding: var(--cs-hero-box-spacing-sm);
+  background: var(--cs-hero-box-bg-tertiary);
+  border: 1px dashed var(--cs-hero-box-border-color);
+  border-radius: var(--cs-hero-box-radius-md);
+  color: var(--cs-hero-box-text-secondary);
+  cursor: pointer;
+}
+
+.cs-hero-box-editor__add-locale:hover {
+  background: var(--cs-hero-box-bg-hover);
+  border-color: var(--color-border-highlight);
+  color: var(--cs-hero-box-text-primary);
+}
+
+/* footer for import and editor dialogs */
+.cs-hero-box-image-import + .form-footer,
+.cs-hero-box-editor + .form-footer {
+  padding: var(--cs-hero-box-spacing-sm);
+  background: var(--cs-hero-box-bg-primary);
+}
+
+.cs-hero-box-image-import + .form-footer button,
+.cs-hero-box-editor + .form-footer button {
+  width: 100%;
+}
+
+/* perf hint — let the browser skip offscreen card rendering */
+.cs-hero-box-data-manager__card {
+  content-visibility: auto;
+  contain-intrinsic-size: 128px 148px;
+}
+
+/* ========================================
+   deletion progress bar (shown during bulk delete)
+   ======================================== */
+
+.cs-hero-box-data-manager__delete-progress {
+  display: flex;
+  align-items: center;
+  gap: var(--cs-hero-box-spacing-sm);
+  padding: var(--cs-hero-box-spacing-xs) var(--cs-hero-box-spacing-sm);
+  background: var(--cs-hero-box-bg-tertiary);
+  border-radius: var(--cs-hero-box-radius-md);
+  flex: 1;
+}
+
+.cs-hero-box-data-manager__progress-track {
+  flex: 1;
+  height: 8px;
+  background: var(--cs-hero-box-bg-secondary);
+  border-radius: var(--cs-hero-box-radius-sm);
+  overflow: hidden;
+}
+
+.cs-hero-box-data-manager__progress-bar {
+  height: 100%;
+  background: var(--color-border-highlight);
+  border-radius: var(--cs-hero-box-radius-sm);
+  transition: width 0.2s ease;
+}
+
+.cs-hero-box-data-manager__progress-text {
+  font-size: var(--cs-hero-box-font-size-sm);
+  color: var(--cs-hero-box-text-muted);
+  white-space: nowrap;
+  min-width: 60px;
+  text-align: right;
+}
+
+/* styled checkbox for data source enable/disable toggle */
+.cs-hero-box-data-sources__toggle input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--color-border-highlight);
+  cursor: pointer;
+}
+
+.cs-hero-box-data-sources__toggle input[type="checkbox"]:not(:checked) {
+  appearance: auto;
+  background: var(--cs-hero-box-bg-tertiary);
+  border: 1px solid var(--cs-hero-box-border-color);
+}

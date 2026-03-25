@@ -1,0 +1,186 @@
+<div class="cs-hero-box-form">
+  <nav class="cs-hero-box-form__mode-tabs">
+    <button 
+      type="button" 
+      class="cs-hero-box-form__mode-tab {{#if isTagMode}}active{{/if}}"
+      data-action="setSelectionMode"
+      data-mode="tag"
+    >
+      <i class="fas fa-tags"></i>
+      {{localize "cs-hero-box.form.selectionMode.tag"}}
+    </button>
+    <button 
+      type="button" 
+      class="cs-hero-box-form__mode-tab {{#if isImageMode}}active{{/if}}"
+      data-action="setSelectionMode"
+      data-mode="image"
+    >
+      <i class="fas fa-images"></i>
+      {{localize "cs-hero-box.form.selectionMode.image"}}
+    </button>
+  </nav>
+
+  {{#if isTagMode}}
+    <fieldset class="cs-hero-box-form__scrollable-section">
+      <legend>{{localize "cs-hero-box.form.labels.race"}}</legend>
+      <div class="cs-hero-box-form__race-list">
+        {{#each raceTags}}
+          <div class="cs-hero-box-form__race-item">
+            <label class="cs-hero-box-form__checkbox">
+              <input 
+                type="checkbox" 
+                name="race.{{id}}" 
+                data-race-id="{{id}}"
+                {{#if isSelected}}checked{{/if}} 
+              />
+              <span>{{label}}</span>
+            </label>
+            
+            {{#if hasSubraces}}
+              <div 
+                class="cs-hero-box-form__subraces" 
+                {{#unless showSubraces}}style="display: none"{{/unless}}
+              >
+                {{#each subraces}}
+                  <label class="cs-hero-box-form__checkbox cs-hero-box-form__checkbox--subrace">
+                    <input 
+                      type="checkbox" 
+                      name="subrace.{{../id}}.{{id}}" 
+                      {{#if isSelected}}checked{{/if}} 
+                    />
+                    <span>{{label}}</span>
+                  </label>
+                {{/each}}
+              </div>
+            {{/if}}
+          </div>
+        {{/each}}
+      </div>
+    </fieldset>
+
+    <fieldset>
+      <legend>{{localize "cs-hero-box.form.labels.gender"}}</legend>
+      <div class="cs-hero-box-form__checkbox-group">
+        {{#each genderTags}}
+          <label class="cs-hero-box-form__checkbox">
+            <input 
+              type="checkbox" 
+              name="gender.{{id}}" 
+              {{#if isSelected}}checked{{/if}}
+            />
+            <span>{{label}}</span>
+          </label>
+        {{/each}}
+      </div>
+    </fieldset>
+
+    <fieldset>
+      <legend>{{localize "cs-hero-box.form.labels.age"}}</legend>
+      <div class="cs-hero-box-form__checkbox-group">
+        {{#each ageTags}}
+          <label class="cs-hero-box-form__checkbox">
+            <input 
+              type="checkbox" 
+              name="age.{{id}}" 
+              {{#if isSelected}}checked{{/if}}
+            />
+            <span>{{label}}</span>
+          </label>
+        {{/each}}
+      </div>
+    </fieldset>
+
+    {{#if roleTags.length}}
+      <fieldset class="cs-hero-box-form__scrollable-section">
+        <legend>{{localize "cs-hero-box.form.labels.role"}}</legend>
+        <div class="cs-hero-box-form__checkbox-group">
+          {{#each roleTags}}
+            <label class="cs-hero-box-form__checkbox">
+              <input 
+                type="checkbox" 
+                name="role.{{id}}" 
+                {{#if isSelected}}checked{{/if}}
+              />
+              <span>{{label}}</span>
+            </label>
+          {{/each}}
+        </div>
+      </fieldset>
+    {{/if}}
+  {{/if}}
+
+  {{#if isImageMode}}
+    <fieldset class="cs-hero-box-form__images-section">
+      <legend>{{localize "cs-hero-box.form.labels.images"}}</legend>
+      
+      {{#if hasSelectedImages}}
+        <div class="cs-hero-box-form__selected-images">
+          {{#each selectedImages}}
+            <div class="cs-hero-box-form__selected-image-item" data-uuid="{{uuid}}">
+              <img src="{{url}}" alt="{{name}}" />
+              <span class="cs-hero-box-form__selected-image-name" title="{{name}}">{{name}}</span>
+              <button type="button" class="cs-hero-box-form__remove-image-btn" data-action="removeImage" data-uuid="{{uuid}}">
+                <i class="fas fa-times"></i>
+              </button>
+            </div>
+          {{/each}}
+        </div>
+        <div class="cs-hero-box-form__image-actions">
+          <button type="button" class="cs-hero-box-form__add-more-btn" data-action="pickImages">
+            <i class="fas fa-plus"></i>
+            {{localize "cs-hero-box.form.btn.addMore"}}
+          </button>
+          <button type="button" class="cs-hero-box-form__clear-images-btn" data-action="clearImages">
+            <i class="fas fa-trash"></i>
+            {{localize "cs-hero-box.form.btn.clearAll"}}
+          </button>
+        </div>
+      {{else}}
+        <button type="button" class="cs-hero-box-form__pick-images-btn" data-action="pickImages">
+          <i class="fas fa-images"></i>
+          {{localize "cs-hero-box.form.btn.pickImages"}}
+        </button>
+      {{/if}}
+      
+      <p class="hint">{{localize "cs-hero-box.form.images.hint"}}</p>
+    </fieldset>
+  {{/if}}
+
+  <fieldset>
+    <legend>{{localize "cs-hero-box.form.labels.mode"}}</legend>
+    <div class="cs-hero-box-form__radio-group">
+      {{#each modeOptions}}
+        <label class="cs-hero-box-form__radio" data-tooltip="{{tooltip}}">
+          <input 
+            type="radio" 
+            name="mode" 
+            value="{{@index}}" 
+            {{#if isChecked}}checked{{/if}}
+          />
+          <span>{{label}}</span>
+        </label>
+      {{/each}}
+    </div>
+  </fieldset>
+
+  <fieldset>
+    <legend>{{localize "cs-hero-box.form.labels.sourceActor"}}</legend>
+    <div class="cs-hero-box-form__drop-zone" data-drop-zone>
+      {{#if sourceActor}}
+        <div class="cs-hero-box-form__source-actor">
+          <img src="{{sourceActor.img}}" alt="{{sourceActor.name}}" />
+          <span class="cs-hero-box-form__source-actor-name">{{sourceActor.name}}</span>
+          <button type="button" class="cs-hero-box-form__clear-btn" data-action="clearSourceActor">
+            <i class="fas fa-times"></i>
+          </button>
+        </div>
+      {{else}}
+        <div class="cs-hero-box-form__drop-placeholder">
+          <i class="fas fa-user-plus"></i>
+          <span>{{localize "cs-hero-box.form.sourceActor.dropHint"}}</span>
+        </div>
+      {{/if}}
+    </div>
+    <p class="hint">{{localize "cs-hero-box.form.sourceActor.hint"}}</p>
+  </fieldset>
+</div>

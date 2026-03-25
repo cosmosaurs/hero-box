@@ -1,0 +1,46 @@
+{
+  "id": "cs-hero-box",
+  "title": "Hero in a Box",
+  "version": "13.1.5",
+  "compatibility": {
+    "minimum": "12",
+    "verified": "13"
+  },
+  "url": "",
+  "manifest": "",
+  "download": "",
+  "description": "<p>Instantly populate your scenes with Hero in a Box. Filter by specie, gender, age, or profession to spawn ready-to-use NPCs with unique portraits, tokens, and names.</p>",
+  "esmodules": [
+    "scripts/cs-hero-box.mjs",
+    "scripts/changelog.mjs"
+  ],
+  "languages": [
+    {
+      "lang": "en",
+      "name": "English",
+      "path": "lang/en.json",
+      "flags": {}
+    },
+    {
+      "lang": "ru",
+      "name": "Русский",
+      "path": "lang/ru.json",
+      "flags": {}
+    }
+  ],
+  "styles": [
+    {
+      "src": "styles/variables.css"
+    },
+    {
+      "src": "styles/common.css"
+    },
+    {
+      "src": "styles/actor-config.css"
+    },
+    {
+      "src": "styles/applications.css"
+    }
+  ],
+  "flags": {}
+}

@@ -1,0 +1,67 @@
+/* design tokens — spacing, sizes, colors, the whole shebang */
+
+:root {
+  /* spacing scale */
+  --cs-hero-box-spacing-xs: 0.25rem;
+  --cs-hero-box-spacing-sm: 0.5rem;
+  --cs-hero-box-spacing-md: 0.75rem;
+  --cs-hero-box-spacing-lg: 1rem;
+  --cs-hero-box-spacing-xl: 1.5rem;
+
+  /* border radius */
+  --cs-hero-box-radius-sm: 3px;
+  --cs-hero-box-radius-md: 4px;
+
+  /* font sizes */
+  --cs-hero-box-font-size-xs: 0.65rem;
+  --cs-hero-box-font-size-sm: 0.8rem;
+  --cs-hero-box-font-size-md: 0.85rem;
+  --cs-hero-box-font-size-lg: 0.9rem;
+  --cs-hero-box-font-size-xl: 0.95rem;
+
+  /* preview image sizes */
+  --cs-hero-box-preview-size-sm: 96px;
+  --cs-hero-box-preview-size-md: 128px;
+
+  /* card and layout dimensions */
+  --cs-hero-box-card-width: 128px;
+  --cs-hero-box-sidebar-width: 200px;
+
+  /* main manager window size */
+  --cs-hero-box-manager-width: 900px;
+  --cs-hero-box-manager-height: 700px;
+
+  /* animation speed */
+  --cs-hero-box-transition-fast: 0.2s;
+
+  /* dark theme colors (default) */
+  --cs-hero-box-bg-primary: rgba(11, 10, 19, 0.9);
+  --cs-hero-box-bg-secondary: #302831;
+  --cs-hero-box-bg-tertiary: #0B0A13;
+  --cs-hero-box-bg-hover: #302c2a;
+  --cs-hero-box-border-color: #3d3835;
+  --cs-hero-box-text-primary: #d0b8a3;
+  --cs-hero-box-text-secondary: #9f8475;
+  --cs-hero-box-text-muted: #9f8475;
+
+  /* scrollbar colors */
+  --cs-hero-box-scrollbar-track: #1a1a1a;
+  --cs-hero-box-scrollbar-thumb: #4a4540;
+  --cs-hero-box-scrollbar-thumb-hover: #5a554f;
+}
+
+/* light theme overrides */
+[data-theme="light"] {
+  --cs-hero-box-bg-primary: #f5f3f0;
+  --cs-hero-box-bg-secondary: #eae7e3;
+  --cs-hero-box-bg-tertiary: #dedbd6;
+  --cs-hero-box-bg-hover: #d2cfc9;
+  --cs-hero-box-border-color: #c5c1ba;
+  --cs-hero-box-text-primary: #1a1816;
+  --cs-hero-box-text-secondary: #4a4640;
+  --cs-hero-box-text-muted: #7a756d;
+
+  --cs-hero-box-scrollbar-track: #e0ddd8;
+  --cs-hero-box-scrollbar-thumb: #b0a89d;
+  --cs-hero-box-scrollbar-thumb-hover: #9a928a;
+}

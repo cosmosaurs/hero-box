@@ -1,0 +1,404 @@
+/* actor create/edit form layout */
+
+.cs-hero-box-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--cs-hero-box-spacing-md);
+  padding: var(--cs-hero-box-spacing-sm);
+}
+
+/* tabs for switching between tag mode and image mode */
+.cs-hero-box-form__mode-tabs {
+  display: flex;
+  gap: 0;
+  border: 1px solid var(--cs-hero-box-border-color);
+  border-radius: var(--cs-hero-box-radius-md);
+  overflow: hidden;
+}
+
+.cs-hero-box-form__mode-tab {
+  flex: 1;
+  padding: var(--cs-hero-box-spacing-sm) var(--cs-hero-box-spacing-md);
+  background: var(--cs-hero-box-bg-secondary);
+  border: none;
+  border-right: 1px solid var(--cs-hero-box-border-color);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--cs-hero-box-spacing-sm);
+  font-size: var(--cs-hero-box-font-size-lg);
+  color: var(--cs-hero-box-text-muted);
+  transition: all var(--cs-hero-box-transition-fast);
+}
+
+.cs-hero-box-form__mode-tab:last-child {
+  border-right: none;
+}
+
+.cs-hero-box-form__mode-tab:hover {
+  background: var(--cs-hero-box-bg-hover);
+  color: var(--cs-hero-box-text-secondary);
+}
+
+.cs-hero-box-form__mode-tab.active {
+  background: var(--cs-hero-box-bg-primary);
+  color: var(--color-border-highlight);
+  font-weight: bold;
+}
+
+.cs-hero-box-form__mode-tab.active i {
+  color: var(--color-border-highlight);
+}
+
+/* scrollable area for long lists inside the form */
+.cs-hero-box-form__scrollable-section {
+  max-height: 150px;
+  overflow-y: auto;
+}
+
+.cs-hero-box-form__images-section {
+  min-height: 100px;
+}
+
+/* checkbox and radio groups */
+.cs-hero-box-form__checkbox-group,
+.cs-hero-box-form__radio-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--cs-hero-box-spacing-sm) var(--cs-hero-box-spacing-lg);
+}
+
+.cs-hero-box-form__checkbox,
+.cs-hero-box-form__radio {
+  display: flex;
+  align-items: center;
+  gap: var(--cs-hero-box-spacing-xs);
+  cursor: pointer;
+  color: var(--cs-hero-box-text-secondary);
+}
+
+.cs-hero-box-form__checkbox input,
+.cs-hero-box-form__radio input {
+  margin: 0;
+}
+
+/* race list with nested subraces */
+.cs-hero-box-form__race-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--cs-hero-box-spacing-sm);
+}
+
+.cs-hero-box-form__race-item {
+  display: flex;
+  flex-direction: column;
+  gap: var(--cs-hero-box-spacing-xs);
+}
+
+.cs-hero-box-form__subraces {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--cs-hero-box-spacing-xs) var(--cs-hero-box-spacing-lg);
+  margin-left: var(--cs-hero-box-spacing-xl);
+  padding-left: var(--cs-hero-box-spacing-sm);
+  border-left: 2px solid var(--cs-hero-box-border-color);
+}
+
+.cs-hero-box-form__checkbox--subrace {
+  font-size: var(--cs-hero-box-font-size-md);
+  color: var(--cs-hero-box-text-muted);
+}
+
+/* drag & drop zone for dropping an actor onto the form */
+.cs-hero-box-form__drop-zone {
+  min-height: 60px;
+  padding: var(--cs-hero-box-spacing-md);
+  border: 2px dashed var(--cs-hero-box-border-color);
+  border-radius: var(--cs-hero-box-radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: border-color var(--cs-hero-box-transition-fast), background-color var(--cs-hero-box-transition-fast);
+  background: var(--cs-hero-box-bg-tertiary);
+}
+
+.cs-hero-box-form__drop-zone.dragover {
+  border-color: var(--color-border-highlight);
+  background-color: var(--cs-hero-box-bg-hover);
+}
+
+/* placeholder shown when no actor is dropped yet */
+.cs-hero-box-form__drop-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--cs-hero-box-spacing-sm);
+  color: var(--cs-hero-box-text-muted);
+}
+
+.cs-hero-box-form__drop-placeholder i {
+  font-size: 1.5rem;
+}
+
+/* dropped actor preview inside the drop zone */
+.cs-hero-box-form__source-actor {
+  display: flex;
+  align-items: center;
+  gap: var(--cs-hero-box-spacing-md);
+  width: 100%;
+}
+
+.cs-hero-box-form__source-actor img {
+  width: 40px;
+  height: 40px;
+  border-radius: var(--cs-hero-box-radius-md);
+  object-fit: cover;
+  border: 1px solid var(--cs-hero-box-border-color);
+}
+
+.cs-hero-box-form__source-actor-name {
+  flex: 1;
+  font-weight: bold;
+  color: var(--cs-hero-box-text-primary);
+}
+
+/* clear button to remove the dropped actor */
+.cs-hero-box-form__clear-btn {
+  padding: var(--cs-hero-box-spacing-xs) var(--cs-hero-box-spacing-sm);
+  background: none;
+  border: none;
+  color: var(--cs-hero-box-text-muted);
+  cursor: pointer;
+  transition: color var(--cs-hero-box-transition-fast);
+}
+
+.cs-hero-box-form__clear-btn:hover {
+  color: var(--color-level-error);
+}
+
+/* hint text below form fields */
+.cs-hero-box-form .hint {
+  font-size: var(--cs-hero-box-font-size-sm);
+  color: var(--cs-hero-box-text-muted);
+  margin-top: var(--cs-hero-box-spacing-xs);
+}
+
+/* big button to open the image picker */
+.cs-hero-box-form__pick-images-btn {
+  width: 100%;
+  padding: var(--cs-hero-box-spacing-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--cs-hero-box-spacing-sm);
+  background: var(--cs-hero-box-bg-tertiary);
+  border: 2px dashed var(--cs-hero-box-border-color);
+  border-radius: var(--cs-hero-box-radius-md);
+  color: var(--cs-hero-box-text-secondary);
+  cursor: pointer;
+  transition: all var(--cs-hero-box-transition-fast);
+  font-size: var(--cs-hero-box-font-size-lg);
+}
+
+.cs-hero-box-form__pick-images-btn:hover {
+  background: var(--cs-hero-box-bg-hover);
+  border-color: var(--color-border-highlight);
+  color: var(--cs-hero-box-text-primary);
+}
+
+.cs-hero-box-form__pick-images-btn i {
+  font-size: 1.25rem;
+}
+
+/* grid of selected image thumbnails */
+.cs-hero-box-form__selected-images {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+  gap: var(--cs-hero-box-spacing-sm);
+  max-height: 200px;
+  overflow-y: auto;
+  margin-bottom: var(--cs-hero-box-spacing-sm);
+}
+
+/* individual selected image card */
+.cs-hero-box-form__selected-image-item {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--cs-hero-box-spacing-xs);
+  padding: var(--cs-hero-box-spacing-xs);
+  background: var(--cs-hero-box-bg-tertiary);
+  border-radius: var(--cs-hero-box-radius-md);
+  border: 1px solid var(--cs-hero-box-border-color);
+}
+
+.cs-hero-box-form__selected-image-item img {
+  width: 60px;
+  height: 60px;
+  border-radius: var(--cs-hero-box-radius-sm);
+  object-fit: cover;
+}
+
+.cs-hero-box-form__selected-image-name {
+  font-size: var(--cs-hero-box-font-size-xs);
+  color: var(--cs-hero-box-text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+  text-align: center;
+}
+
+/* little x button to remove a single image, only visible on hover */
+.cs-hero-box-form__remove-image-btn {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--cs-hero-box-bg-primary);
+  border: 1px solid var(--cs-hero-box-border-color);
+  border-radius: 50%;
+  color: var(--cs-hero-box-text-muted);
+  cursor: pointer;
+  font-size: var(--cs-hero-box-font-size-xs);
+  opacity: 0;
+  transition: opacity var(--cs-hero-box-transition-fast), color var(--cs-hero-box-transition-fast);
+}
+
+.cs-hero-box-form__selected-image-item:hover .cs-hero-box-form__remove-image-btn {
+  opacity: 1;
+}
+
+.cs-hero-box-form__remove-image-btn:hover {
+  color: var(--color-level-error);
+  border-color: var(--color-level-error);
+}
+
+/* action row below selected images — add more / clear all */
+.cs-hero-box-form__image-actions {
+  display: flex;
+  gap: var(--cs-hero-box-spacing-sm);
+}
+
+.cs-hero-box-form__add-more-btn,
+.cs-hero-box-form__clear-images-btn {
+  flex: 1;
+  padding: var(--cs-hero-box-spacing-xs) var(--cs-hero-box-spacing-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--cs-hero-box-spacing-xs);
+  border-radius: var(--cs-hero-box-radius-md);
+  cursor: pointer;
+  font-size: var(--cs-hero-box-font-size-md);
+}
+
+.cs-hero-box-form__add-more-btn {
+  background: var(--cs-hero-box-bg-tertiary);
+  border: 1px solid var(--cs-hero-box-border-color);
+  color: var(--cs-hero-box-text-secondary);
+}
+
+.cs-hero-box-form__add-more-btn:hover {
+  background: var(--cs-hero-box-bg-hover);
+  border-color: var(--color-border-highlight);
+  color: var(--cs-hero-box-text-primary);
+}
+
+.cs-hero-box-form__clear-images-btn {
+  background: transparent;
+  border: 1px solid var(--cs-hero-box-border-color);
+  color: var(--cs-hero-box-text-muted);
+}
+
+.cs-hero-box-form__clear-images-btn:hover {
+  background: var(--color-level-error);
+  border-color: var(--color-level-error);
+  color: white;
+}
+
+/* create actor button */
+.cs-hero-box-create-btn {
+  display: flex;
+  align-items: center;
+  gap: var(--cs-hero-box-spacing-sm);
+}
+
+.cs-hero-box-create-btn i {
+  font-size: 1rem;
+}
+
+/* full-width footer button for the actor config dialog */
+[id^="cs-hero-box-actor-config"] .form-footer {
+  padding: var(--cs-hero-box-spacing-sm);
+  background: var(--cs-hero-box-bg-primary);
+}
+
+[id^="cs-hero-box-actor-config"] .form-footer button {
+  width: 100%;
+}
+
+/* drop zone (repeated for specificity, same styles with solid border on dragover) */
+.cs-hero-box-form__drop-zone {
+  min-height: 60px;
+  padding: var(--cs-hero-box-spacing-md);
+  border: 2px dashed var(--cs-hero-box-border-color);
+  border-radius: var(--cs-hero-box-radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--cs-hero-box-bg-tertiary);
+  transition: border-color var(--cs-hero-box-transition-fast), background-color var(--cs-hero-box-transition-fast);
+}
+
+.cs-hero-box-form__drop-zone.dragover {
+  border-color: var(--color-border-highlight);
+  background-color: var(--cs-hero-box-bg-hover);
+  border-style: solid;
+}
+
+/* import settings row — scale input and auto-detect checkbox */
+.cs-hero-box-image-import__settings {
+  margin-top: var(--cs-hero-box-spacing-sm);
+}
+
+.cs-hero-box-image-import__settings-row {
+  display: flex;
+  align-items: center;
+  gap: var(--cs-hero-box-spacing-lg);
+}
+
+.cs-hero-box-image-import__scale-group {
+  display: flex;
+  align-items: center;
+  gap: var(--cs-hero-box-spacing-sm);
+}
+
+.cs-hero-box-image-import__scale-group input[type="number"] {
+  width: 60px;
+  height: 28px;
+  text-align: center;
+  background: var(--cs-hero-box-bg-tertiary);
+  border: 1px solid var(--cs-hero-box-border-color);
+  color: var(--cs-hero-box-text-primary);
+}
+
+.cs-hero-box-image-import__checkbox-inline {
+  display: flex;
+  align-items: center;
+  gap: var(--cs-hero-box-spacing-xs);
+  cursor: pointer;
+  color: var(--cs-hero-box-text-secondary);
+  white-space: nowrap;
+}
+
+.cs-hero-box-image-import__checkbox-inline input {
+  margin: 0;
+}
