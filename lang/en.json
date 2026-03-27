@@ -231,7 +231,8 @@
     "actor": {
       "created": "Created actor: {name}",
       "randomFromImages": "Unknown Hero",
-      "randomPrefix": "Random"
+      "randomPrefix": "Random",
+      "fallbackName": "Character"
     },
 
     "errors": {

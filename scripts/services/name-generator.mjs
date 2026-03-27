@@ -322,7 +322,7 @@ class NameGeneratorService {
 
   // last resort when nothing matches
   #fallbackName() {
-    return `Token #${foundry.utils.randomID(8)}`;
+    return `${game.i18n.localize('cs-hero-box.actor.fallbackName')} #${foundry.utils.randomID(8)}`;
   }
 }
 

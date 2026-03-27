@@ -231,7 +231,8 @@
     "actor": {
       "created": "Создан актёр: {name}",
       "randomFromImages": "Неизвестный герой",
-      "randomPrefix": "Случайный"
+      "randomPrefix": "Случайный",
+      "fallbackName": "Персонаж"
     },
 
     "errors": {
