@@ -75,7 +75,7 @@ class ActorService {
   }
 
   // called on preCreateToken — rolls a new random image/name for unlinked tokens
-  applyRandomTokenImage(token) {
+  async applyRandomTokenImage(token) {
     const actorDoc = game.actors.get(token.actorId);
     if (!actorDoc) return false;
 
@@ -125,7 +125,7 @@ class ActorService {
       }
     }
 
-    const name = nameGenerator.generate(imageData.tags);
+    const name = await nameGenerator.generate(imageData.tags);
     const scale = imageData.scale ?? 1;
 
     const updateData = {
@@ -269,7 +269,7 @@ class ActorService {
       };
     } else {
       const imageTags = imageData.tags ?? [];
-      const name = nameGenerator.generate(imageTags);
+      const name = await nameGenerator.generate(imageTags);
       const scale = imageData.scale ?? 1;
 
       actorData.name = name;

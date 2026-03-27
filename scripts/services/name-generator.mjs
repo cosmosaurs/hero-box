@@ -33,17 +33,17 @@ class NameGeneratorService {
   }
 
   // generate a full name based on the provided tags
-  generate(tags) {
+  async generate(tags) {
     if (!this.#initialized) {
       logger.warn('Name generator not initialized');
       return this.#fallbackName();
     }
 
     const context = this.#parseContext(tags);
-    const firstName = this.#pickName('firstName', context);
-    const lastName = this.#pickName('lastName', context);
-    const clan = this.#pickName('clan', context);
-    const nickname = this.#pickName('nickname', context);
+    const firstName = await this.#pickName('firstName', context);
+    const lastName = await this.#pickName('lastName', context);
+    const clan = await this.#pickName('clan', context);
+    const nickname = await this.#pickName('nickname', context);
 
     return this.#assemble({ ...context, firstName, lastName, clan, nickname });
   }
@@ -79,7 +79,7 @@ class NameGeneratorService {
   }
 
   // pick a random name of the given type that matches the context
-  #pickName(type, context) {
+  async #pickName(type, context) {
     const raceTagIds = this.#getRaceTagIds();
 
     const matchingSets = this.#nameMeta.filter(set => {
@@ -119,19 +119,19 @@ class NameGeneratorService {
     const setsToUse = specificSets.length > 0 ? specificSets : matchingSets;
     const selectedSet = setsToUse[Math.floor(Math.random() * setsToUse.length)];
 
-    const names = this.#getNames(selectedSet);
+    const names = await this.#getNames(selectedSet);
     return names.length ? names[Math.floor(Math.random() * names.length)] : null;
   }
 
   // get the actual name list from a set, loading from source if needed
-  #getNames(meta) {
+  async #getNames(meta) {
     if (meta.namesResolved) {
       return meta.namesResolved;
     }
 
     let nameMap = this.#nameDataMap.get(meta.id);
     if (!nameMap) {
-      nameMap = this.#loadNameData(meta);
+      nameMap = await this.#loadNameData(meta);
       if (nameMap) {
         this.#nameDataMap.set(meta.id, nameMap);
       }
@@ -147,13 +147,13 @@ class NameGeneratorService {
   }
 
   // load name data from an inline source or a journal page
-  #loadNameData(meta) {
+  async #loadNameData(meta) {
     if (meta.inlineNames) {
       return meta.inlineNames;
     }
 
     if (meta.uuid) {
-      const page = fromUuidSync(meta.uuid);
+      const page = await fromUuid(meta.uuid);
       if (page) {
         const nameData = getFlag(page, FLAGS.NAME_DATA);
         return nameData?.names ?? null;
