@@ -224,6 +224,7 @@ export class ActorConfig extends BaseFormApplication {
 
   // user clicked the generate button — pack up the data and close
   _onGenerate() {
+    this.#syncFormState();
     this.#result = {
       submitted: true,
       data: this.#buildOutput(),
