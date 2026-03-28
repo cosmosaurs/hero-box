@@ -158,6 +158,7 @@ export class DataManager extends BaseApplication {
   // cleanup when closing the window
   _onClose(options) {
     this.#tabs[TAB.IMAGES].destroy();
+    this.#removeOrphanedPopup();
     return super._onClose(options);
   }
 
@@ -318,4 +319,11 @@ export class DataManager extends BaseApplication {
 
   _onToggleTag(e, t) { this.#tabs[this.#activeTab].onToggleTag(e, t); }
   _onToggleTagGroup(e, t) { this.#tabs[this.#activeTab].onToggleTagGroup(e, t); }
+
+  #removeOrphanedPopup() {
+    const popup = document.querySelector('.cs-hero-box-card-popup');
+    if (popup) {
+      popup.remove();
+    }
+  }
 }
