@@ -83,10 +83,7 @@ export class DataSources extends BaseFormApplication {
         await nameGenerator.reload();
 
         this.#refreshDataManager();
-        ui.notifications.info(game.i18n.localize('cs-hero-box.dataSources.saved'));
       }, 50);
-    } else {
-      ui.notifications.info(game.i18n.localize('cs-hero-box.dataSources.saved'));
     }
 
     return false;
