@@ -159,6 +159,10 @@ class TagService {
       return moduleLocalized;
     }
 
+    if (tagData?.label && tagData.label !== tagId) {
+      return tagData.label;
+    }
+
     return tagId;
   }
 

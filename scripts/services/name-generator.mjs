@@ -126,9 +126,6 @@ class NameGeneratorService {
     return this.#raceTagIds;
   }
 
-  // pick a random name of the given type that matches the context
-    const setsToUse = this.#preferSpecificSets(matchingSets, context);
-    const selectedSet = setsToUse[Math.floor(Math.random() * setsToUse.length)];
   #pickName(type, context) {
     const matchingSets = this.#findMatchingSets(type, context);
     if (!matchingSets.length) return null;
