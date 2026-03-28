@@ -191,7 +191,7 @@ export class NamesTab {
   // generates a random name from the set's tags and copies it to clipboard
   async onTestGenerate(event, target) {
     const tags = target.dataset.tags?.split(',').filter(Boolean) ?? [];
-    const name = nameGenerator.generate(tags);
+    const name = await nameGenerator.generate(tags);
 
     try {
       await navigator.clipboard.writeText(name);

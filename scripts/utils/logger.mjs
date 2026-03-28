@@ -9,11 +9,11 @@ const LogLevel = {
   ERROR: 3,
 };
 
-let currentLevel = LogLevel.INFO;
+let currentLevel = LogLevel.WARN;
 
 // switch the minimum log level (debug/info/warn/error)
 export function setLogLevel(level) {
-  currentLevel = LogLevel[level.toUpperCase()] ?? LogLevel.INFO;
+  currentLevel = LogLevel[level.toUpperCase()] ?? LogLevel.WARN;
 }
 
 export const logger = {
@@ -49,7 +49,9 @@ export const logger = {
     return {
       end: () => {
         const duration = performance.now() - start;
-        this.debug(`${label}: ${duration.toFixed(2)}ms`);
+        if (currentLevel <= LogLevel.DEBUG) {
+          console.debug(PREFIX, `${label}: ${duration.toFixed(2)}ms`);
+        }
       }
     };
   }

@@ -130,7 +130,7 @@ class ActorService {
       }
     }
 
-    const name = nameGenerator.generateSync(imageData.tags);
+    const name = nameGenerator.generate(imageData.tags);
     const scale = imageData.scale ?? 1;
 
     token.updateSource({
