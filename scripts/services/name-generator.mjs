@@ -179,9 +179,7 @@ class NameGeneratorService {
 
   async #loadFromSources() {
     const sources = source.getEnabledSources();
-    if (!sources || sources.length === 0) return;
-
-    const loadPromises = [];
+    if (!sources?.length) return;
 
     for (const sourceId of sources) {
       try {

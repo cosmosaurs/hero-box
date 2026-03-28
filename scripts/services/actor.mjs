@@ -284,7 +284,7 @@ class ActorService {
       };
     } else {
       const imageTags = imageData.tags ?? [];
-      const name = await nameGenerator.generate(imageTags);
+      const name = nameGenerator.generate(imageTags);
       const scale = imageData.scale ?? 1;
 
       actorData.name = name;

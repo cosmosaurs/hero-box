@@ -3,12 +3,21 @@
   "title": "Hero in a Box",
   "version": "1.0.0",
   "compatibility": {
-    "minimum": "12",
+    "minimum": "13",
     "verified": "13"
   },
-  "url": "",
-  "manifest": "",
-  "download": "",
+  "url": "https://github.com/cosmosaurs/hero-box",
+  "download": "https://github.com/cosmosaurs/hero-box/archive/1.0.0.zip",
+  "manifest": "https://github.com/cosmosaurs/hero-box/releases/latest/download/module.json",
+  "readme": "README.md",
+  "bugs": "https://github.com/cosmosaurs/click-to-scene/issues",
+  "authors": [
+    {
+      "name": "Cosmosaurs Studio",
+      "url": "https://patreon.com/cosmosaurs",
+      "discord": "https://discord.gg/Hf9a4bgjWz"
+    }
+  ],
   "description": "<p>Instantly populate your scenes with Hero in a Box. Filter by specie, gender, age, or profession to spawn ready-to-use NPCs with unique portraits, tokens, and names.</p>",
   "esmodules": [
     "scripts/cs-hero-box.mjs",

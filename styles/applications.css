@@ -46,6 +46,12 @@
 [id^="cs-hero-box-"] .window-content {
   padding-block-start: 0;
   background: var(--cs-hero-box-bg-primary);
+
+  button.active,
+  button:focus {
+    outline: none;
+    box-shadow: none;
+  }
 }
 
 /* unified fieldset look across all dialogs */
@@ -1428,13 +1434,4 @@
   appearance: auto;
   background: var(--cs-hero-box-bg-tertiary);
   border: 1px solid var(--cs-hero-box-border-color);
-}
-
-.cs-hero-box-data-manager,
-.cs-hero-box-image-import {
-  button.active,
-  button:focus {
-    outline: none;
-    box-shadow: none;
-  }
 }
