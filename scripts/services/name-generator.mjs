@@ -131,10 +131,14 @@ class NameGeneratorService {
     if (!matchingSets.length) return null;
 
     const setsToUse = this.#preferSpecificSets(matchingSets, context);
-    const selectedSet = setsToUse[Math.floor(Math.random() * setsToUse.length)];
 
-    const names = this.#namesBySetId.get(selectedSet.id) ?? [];
-    return names.length ? names[Math.floor(Math.random() * names.length)] : null;
+    const allNames = [];
+    for (const set of setsToUse) {
+      const names = this.#namesBySetId.get(set.id) ?? [];
+      allNames.push(...names);
+    }
+
+    return allNames.length ? allNames[Math.floor(Math.random() * allNames.length)] : null;
   }
 
   #findMatchingSets(type, context) {
