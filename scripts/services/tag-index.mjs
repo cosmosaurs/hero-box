@@ -16,12 +16,14 @@ class TagIndexService {
   #urlIndex = new Map();
   #initialized = false;
   #initializing = false;
+  #cacheDirty = false;
+  #saveCacheTimer = null;
 
   // load the index from cache or rebuild from sources
   async initialize() {
     if (this.#initialized || this.#initializing) return;
-
     this.#initializing = true;
+
     const timer = logger.time('Tag index initialization');
 
     try {
@@ -61,6 +63,7 @@ class TagIndexService {
     this.#urlIndex.clear();
     this.#initialized = false;
     this.#initializing = false;
+    this.#cacheDirty = false;
     await indexCache.delete(CACHE_KEY);
     await indexCache.delete(CACHE_META_KEY);
     await this.initialize();
@@ -137,29 +140,45 @@ class TagIndexService {
   }
 
   // update a single image in the index
+  #markCacheDirty() {
+    this.#cacheDirty = true;
+    if (this.#saveCacheTimer) {
+      clearTimeout(this.#saveCacheTimer);
+    }
+    this.#saveCacheTimer = setTimeout(() => {
+      this.#saveCacheTimer = null;
+      if (this.#cacheDirty) {
+        this.#cacheDirty = false;
+        const sources = source.getDataSources();
+        this.#saveToCache(sources);
+      }
+    }, 2000);
+  }
+
   updateImage(uuid, newImageData) {
     if (!this.#initialized) return;
-    this.removeImage(uuid);
+    this.#removeImageInternal(uuid);
     if (newImageData) {
       this.#addImageToIndex(uuid, newImageData);
     }
+    this.#markCacheDirty();
   }
 
   // batch update multiple images
   updateImages(updates) {
     if (!this.#initialized) return;
     for (const { uuid, imageData } of updates) {
-      this.removeImage(uuid);
+      this.#removeImageInternal(uuid);
       if (imageData) {
         this.#addImageToIndex(uuid, imageData);
       }
     }
+    this.#markCacheDirty();
   }
 
   // update just the tags for an image (faster than full update)
   updateImageTags(uuid, newTags) {
     if (!this.#initialized) return;
-
     const existing = this.#imageCache.get(uuid);
     if (!existing) return;
 
@@ -178,21 +197,40 @@ class TagIndexService {
       if (!this.#tagToImages.has(tagId)) this.#tagToImages.set(tagId, new Set());
       this.#tagToImages.get(tagId).add(uuid);
     }
+    this.#markCacheDirty();
   }
 
   // add many images at once (used during import)
   bulkAddImages(images, sourceId = null) {
     if (!this.#initialized) return;
     for (const { uuid, imageData } of images) {
-      if (this.#imageCache.has(uuid)) this.removeImage(uuid);
+      if (this.#imageCache.has(uuid)) this.#removeImageInternal(uuid);
       this.#addImageToIndex(uuid, imageData, sourceId);
     }
+    this.#markCacheDirty();
   }
 
   // remove an image from all indexes
   removeImage(uuid) {
     if (!this.#initialized) return;
+    this.#removeImageInternal(uuid);
+    this.#markCacheDirty();
+  }
 
+  removeImages(uuids) {
+    if (!this.#initialized) return;
+    for (const uuid of uuids) this.#removeImageInternal(uuid);
+    this.#markCacheDirty();
+  }
+
+  addImage(uuid, imageData, sourceId = null) {
+    if (!this.#initialized) return;
+    if (this.#imageCache.has(uuid)) this.#removeImageInternal(uuid);
+    this.#addImageToIndex(uuid, imageData, sourceId);
+    this.#markCacheDirty();
+  }
+
+  #removeImageInternal(uuid) {
     const existing = this.#imageCache.get(uuid);
     if (!existing) return;
 
@@ -208,19 +246,6 @@ class TagIndexService {
     if (existing.portraitUrl && existing.portraitUrl !== existing.tokenUrl) this.#urlIndex.delete(existing.portraitUrl);
 
     this.#imageCache.delete(uuid);
-  }
-
-  // remove multiple images at once
-  removeImages(uuids) {
-    if (!this.#initialized) return;
-    for (const uuid of uuids) this.removeImage(uuid);
-  }
-
-  // add a single image to the index
-  addImage(uuid, imageData, sourceId = null) {
-    if (!this.#initialized) return;
-    if (this.#imageCache.has(uuid)) this.removeImage(uuid);
-    this.#addImageToIndex(uuid, imageData, sourceId);
   }
 
   // extract the journal uuid from a page uuid
