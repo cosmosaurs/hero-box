@@ -20,6 +20,7 @@ class ActorService {
 
     if (isImageMode) {
       if (!input.selectedImageUuids?.length) {
+        ui.notifications.warn(game.i18n.localize('cs-hero-box.errors.noImagesSelected'));
         return null;
       }
 
@@ -28,6 +29,7 @@ class ActorService {
       imageData = await imagePicker.getByUuid(selectedUuid);
 
       if (!imageData) {
+        ui.notifications.warn(game.i18n.localize('cs-hero-box.errors.noImagesFound'));
         return null;
       }
     } else {
@@ -38,6 +40,7 @@ class ActorService {
 
       if (!imageData) {
         logger.warn('No images found for tag groups:', tagGroups);
+        ui.notifications.warn(game.i18n.localize('cs-hero-box.errors.noImagesFound'));
         return null;
       }
     }
@@ -71,11 +74,13 @@ class ActorService {
 
     await actorDoc.setFlag(MODULE_ID, FLAGS.PREV_FORM_VALUES, input);
 
+    ui.notifications.info(game.i18n.format('cs-hero-box.actor.created', { name: actorDoc.name }));
+
     return { actor: actorDoc, isNew };
   }
 
   // called on preCreateToken — rolls a new random image/name for unlinked tokens
-  async applyRandomTokenImage(token) {
+  applyRandomTokenImage(token) {
     const actorDoc = game.actors.get(token.actorId);
     if (!actorDoc) return false;
 
@@ -125,30 +130,40 @@ class ActorService {
       }
     }
 
-    const name = await nameGenerator.generate(imageData.tags);
+    const name = nameGenerator.generateSync(imageData.tags);
     const scale = imageData.scale ?? 1;
 
-    const updateData = {
+    token.updateSource({
       name,
       displayName: CONST.TOKEN_DISPLAY_MODES.HOVER,
-      'texture.src': imageData.tokenUrl,
-      'texture.scaleX': scale,
-      'texture.scaleY': scale,
-    };
+      texture: {
+        src: imageData.tokenUrl,
+        scaleX: scale,
+        scaleY: scale,
+      },
+    });
 
     if (imageData.dynamicRing) {
-      updateData['ring.enabled'] = true;
-      updateData['ring.effects'] = token.ring?.effects ?? 1;
-      updateData['ring.subject.texture'] = imageData.tokenUrl;
-      updateData['ring.subject.scale'] = scale;
+      token.updateSource({
+        ring: {
+          enabled: true,
+          effects: token.ring?.effects ?? 1,
+          subject: {
+            texture: imageData.tokenUrl,
+            scale: scale,
+          },
+        },
+      });
     }
 
     if (!token.actorLink) {
-      updateData['delta.name'] = name;
-      updateData['delta.img'] = imageData.portraitUrl;
+      token.updateSource({
+        delta: {
+          name: name,
+          img: imageData.portraitUrl,
+        },
+      });
     }
-
-    token.updateSource(updateData);
 
     logger.debug('Token updated:', { name, image: imageData.tokenUrl });
     return true;
@@ -279,16 +294,22 @@ class ActorService {
         name,
         displayName: CONST.TOKEN_DISPLAY_MODES.HOVER,
         actorLink: true,
-        'texture.src': imageData.tokenUrl,
-        'texture.scaleX': scale,
-        'texture.scaleY': scale,
+        texture: {
+          src: imageData.tokenUrl,
+          scaleX: scale,
+          scaleY: scale,
+        },
       };
 
       if (imageData.dynamicRing) {
-        actorData.prototypeToken['ring.enabled'] = true;
-        actorData.prototypeToken['ring.effects'] = 1;
-        actorData.prototypeToken['ring.subject.texture'] = imageData.tokenUrl;
-        actorData.prototypeToken['ring.subject.scale'] = scale;
+        actorData.prototypeToken.ring = {
+          enabled: true,
+          effects: 1,
+          subject: {
+            texture: imageData.tokenUrl,
+            scale: scale,
+          },
+        };
       }
 
       actorData.flags[MODULE_ID][FLAGS.TOKEN_CRITERIA].fixedImageUuid = imageData.uuid;
