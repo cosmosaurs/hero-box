@@ -6,23 +6,21 @@ import { getSourcePages } from '../utils/source.mjs';
 import { source } from './source.mjs';
 import { tag } from './tag.mjs';
 
-// generates random names based on race/gender/age tags
 class NameGeneratorService {
   #nameMeta = [];
-  #nameDataMap = new Map();
+  #namesBySetId = new Map();
   #initialized = false;
   #raceTagIds = null;
 
-  // load name sets from all configured sources
   async initialize() {
     if (this.#initialized) return;
 
     const timer = logger.time('Name generator initialization');
 
     try {
-      await this.#loadMetaFromSources();
+      await this.#loadFromSources();
       this.#initialized = true;
-      logger.info(`Loaded ${this.#nameMeta.length} name sets (${this.#nameDataMap.size} with full data)`);
+      logger.info(`Loaded ${this.#nameMeta.length} name sets, ${this.#namesBySetId.size} fully cached`);
     } catch (error) {
       logger.error('Failed to initialize name generator:', error);
     } finally {
@@ -30,8 +28,7 @@ class NameGeneratorService {
     }
   }
 
-  // generate a full name based on the provided tags
-  async generate(tags) {
+  generate(tags) {
     if (!this.#initialized) {
       logger.warn('Name generator not initialized');
       return this.#fallbackName();
@@ -39,30 +36,21 @@ class NameGeneratorService {
 
     const context = this.#parseContext(tags);
     const parts = {
-      firstName: await this.#pickName('firstName', context),
-      lastName: await this.#pickName('lastName', context),
-      clan: await this.#pickName('clan', context),
-      nickname: await this.#pickName('nickname', context),
+      firstName: this.#pickName('firstName', context),
+      lastName: this.#pickName('lastName', context),
+      clan: this.#pickName('clan', context),
+      nickname: this.#pickName('nickname', context),
     };
 
     return this.#assembleWithHook(context, parts, tags);
   }
 
-  generateSync(tags) {
-    if (!this.#initialized) {
-      logger.warn('Name generator not initialized');
-      return this.#fallbackName();
-    }
-
-    const context = this.#parseContext(tags);
-    const parts = {
-      firstName: this.#pickNameSync('firstName', context),
-      lastName: this.#pickNameSync('lastName', context),
-      clan: this.#pickNameSync('clan', context),
-      nickname: this.#pickNameSync('nickname', context),
-    };
-
-    return this.#assembleWithHook(context, parts, tags);
+  async reload() {
+    this.#nameMeta = [];
+    this.#namesBySetId.clear();
+    this.#initialized = false;
+    this.#raceTagIds = null;
+    await this.initialize();
   }
 
   #assembleWithHook(context, parts, tags) {
@@ -139,25 +127,16 @@ class NameGeneratorService {
   }
 
   // pick a random name of the given type that matches the context
-  async #pickName(type, context) {
+    const setsToUse = this.#preferSpecificSets(matchingSets, context);
+    const selectedSet = setsToUse[Math.floor(Math.random() * setsToUse.length)];
+  #pickName(type, context) {
     const matchingSets = this.#findMatchingSets(type, context);
     if (!matchingSets.length) return null;
 
     const setsToUse = this.#preferSpecificSets(matchingSets, context);
     const selectedSet = setsToUse[Math.floor(Math.random() * setsToUse.length)];
 
-    const names = await this.#getNames(selectedSet);
-    return names.length ? names[Math.floor(Math.random() * names.length)] : null;
-  }
-
-  #pickNameSync(type, context) {
-    const matchingSets = this.#findMatchingSets(type, context);
-    if (!matchingSets.length) return null;
-
-    const setsToUse = this.#preferSpecificSets(matchingSets, context);
-    const selectedSet = setsToUse[Math.floor(Math.random() * setsToUse.length)];
-
-    const names = this.#getNamesSync(selectedSet);
+    const names = this.#namesBySetId.get(selectedSet.id) ?? [];
     return names.length ? names[Math.floor(Math.random() * names.length)] : null;
   }
 
@@ -201,70 +180,11 @@ class NameGeneratorService {
     return specificSets.length > 0 ? specificSets : matchingSets;
   }
 
-  // get the actual name list from a set, loading from source if needed
-  async #getNames(meta) {
-    if (meta.namesResolved) {
-      return meta.namesResolved;
-    }
-
-    let nameMap = this.#nameDataMap.get(meta.id);
-    if (!nameMap) {
-      nameMap = await this.#loadNameData(meta);
-      if (nameMap) {
-        this.#nameDataMap.set(meta.id, nameMap);
-      }
-    }
-
-    if (!nameMap) return [];
-
-    const locale = game.i18n.lang;
-    const names = nameMap[locale] ?? nameMap['en'] ?? nameMap[Object.keys(nameMap)[0]] ?? [];
-    meta.namesResolved = names;
-    return names;
-  }
-
-  #getNamesSync(meta) {
-    if (meta.namesResolved) {
-      return meta.namesResolved;
-    }
-
-    if (meta.inlineNames) {
-      const locale = game.i18n.lang;
-      const names = meta.inlineNames[locale] ?? meta.inlineNames['en'] ?? meta.inlineNames[Object.keys(meta.inlineNames)[0]] ?? [];
-      meta.namesResolved = names;
-      return names;
-    }
-
-    const nameMap = this.#nameDataMap.get(meta.id);
-    if (!nameMap) return [];
-
-    const locale = game.i18n.lang;
-    const names = nameMap[locale] ?? nameMap['en'] ?? nameMap[Object.keys(nameMap)[0]] ?? [];
-    meta.namesResolved = names;
-    return names;
-  }
-
-  // load name data from an inline source or a journal page
-  async #loadNameData(meta) {
-    if (meta.inlineNames) {
-      return meta.inlineNames;
-    }
-
-    if (meta.uuid) {
-      const page = await fromUuid(meta.uuid);
-      if (page) {
-        const nameData = getFlag(page, FLAGS.NAME_DATA);
-        return nameData?.names ?? null;
-      }
-    }
-
-    return null;
-  }
-
-  // load name set metadata from all configured data sources
-  async #loadMetaFromSources() {
+  async #loadFromSources() {
     const sources = source.getEnabledSources();
     if (!sources || sources.length === 0) return;
+
+    const loadPromises = [];
 
     for (const sourceId of sources) {
       try {
@@ -276,15 +196,17 @@ class NameGeneratorService {
 
           const tags = this.#extractTags(nameData);
           const id = page.uuid;
+          const locale = game.i18n.lang;
+          const nameMap = nameData.names;
+          const names = nameMap[locale] ?? nameMap['en'] ?? nameMap[Object.keys(nameMap)[0]] ?? [];
 
           this.#nameMeta.push({
             id,
-            uuid: page.uuid,
             tags,
             type: nameData.type ?? 'firstName',
-            inlineNames: null,
-            namesResolved: null,
           });
+
+          this.#namesBySetId.set(id, names);
         }
       } catch (error) {
         logger.warn(`Failed to load names from source: ${sourceId}`, error);
@@ -292,16 +214,6 @@ class NameGeneratorService {
     }
   }
 
-  // clear everything and reload from sources
-  async reload() {
-    this.#nameMeta = [];
-    this.#nameDataMap.clear();
-    this.#initialized = false;
-    this.#raceTagIds = null;
-    await this.initialize();
-  }
-
-  // grab tags from name data in either new or legacy format
   #extractTags(nameData) {
     if (nameData.tags) return nameData.tags;
     const tags = [];
