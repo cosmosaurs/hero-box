@@ -1,3 +1,7 @@
+/**
+ * @fileoverview Actor and prototype-token creation; random token rolls on `preCreateToken`.
+ */
+
 import { MODULE_ID, FLAGS, TOKEN_MODE, RANDOM_PORTRAIT_PATH } from '../constants/index.mjs';
 import { GENDER_TAGS, AGE_TAGS, TAG_CATEGORY } from '../constants/tags.mjs';
 import { logger, getFlag } from '../utils/index.mjs';
@@ -7,10 +11,14 @@ import { nameGenerator } from './name-generator.mjs';
 import { tagIndex } from './tag-index.mjs';
 import { tag } from './tag.mjs';
 
-// handles creating and updating actors with random/fixed images and names
 class ActorService {
-
-  // main entry point — create a new actor or update an existing one
+  /**
+   * Create or update an actor from Hero Box form data.
+   * @param {object} input Form payload (mode, tags, images, etc.).
+   * @param {Actor|null} [existingActor]
+   * @param {string|null} [folderId]
+   * @returns {Promise<{ actor: Actor, isNew: boolean }|null>}
+   */
   async createOrUpdate(input, existingActor = null, folderId = null) {
     logger.debug('Creating/updating actor with input:', input);
 
@@ -79,7 +87,11 @@ class ActorService {
     return { actor: actorDoc, isNew };
   }
 
-  // called on preCreateToken — rolls a new random image/name for unlinked tokens
+  /**
+   * Apply rolled token texture, ring, name, and unlinked delta for random-mode actors.
+   * @param {TokenDocument} token
+   * @returns {boolean} Whether this token was updated.
+   */
   applyRandomTokenImage(token) {
     const actorDoc = game.actors.get(token.actorId);
     if (!actorDoc) return false;
@@ -169,13 +181,19 @@ class ActorService {
     return true;
   }
 
-  // get the tags stored on an actor from previous generation
+  /**
+   * @param {Actor} actorDoc
+   * @returns {string[]}
+   */
   getTags(actorDoc) {
     const criteria = getFlag(actorDoc, FLAGS.TOKEN_CRITERIA);
     return criteria?.tags ?? [];
   }
 
-  // convert form input into the tag groups format we use for filtering
+  /**
+   * @param {object} input Actor form state (race, subrace, gender, age, role).
+   * @returns {Record<string, string[]>}
+   */
   #buildTagGroups(input) {
     const groups = {
       race: [],
@@ -200,7 +218,10 @@ class ActorService {
     return groups;
   }
 
-  // reverse operation — convert a flat tag array back into groups
+  /**
+   * @param {string[]} tags Flat list from stored token criteria.
+   * @returns {Record<string, string[]>}
+   */
   #tagsToGroups(tags) {
     const groups = {
       race: [],
@@ -235,7 +256,7 @@ class ActorService {
     return groups;
   }
 
-  // squash all tag groups into a single flat array
+  /** @param {Record<string, string[]>} tagGroups */
   #flattenTagGroups(tagGroups) {
     const tags = [];
     for (const groupTags of Object.values(tagGroups)) {
@@ -246,7 +267,10 @@ class ActorService {
     return tags;
   }
 
-  // build the full actor data object ready for Actor.create() or actor.update()
+  /**
+   * @param {object} params
+   * @returns {Promise<object>} `Actor` create/update payload.
+   */
   async #prepareActorData({ input, tagGroups, isRandom, isImageMode, imageData, sourceActorData, folderId, existingActor }) {
     const actorData = {};
 
@@ -318,7 +342,11 @@ class ActorService {
     return actorData;
   }
 
-  // make a descriptive name like "Random Male Elf" for random-mode actors
+  /**
+   * @param {Record<string, string[]>} tagGroups
+   * @param {boolean} [isImageMode]
+   * @returns {string}
+   */
   #generatePlaceholderName(tagGroups, isImageMode = false) {
     if (isImageMode) {
       const baseName = game.i18n.localize('cs-hero-box.actor.randomFromImages');
@@ -351,7 +379,10 @@ class ActorService {
     return this.#uniqueName(baseName);
   }
 
-  // append (1), (2), etc. if an actor with this name already exists
+  /**
+   * @param {string} baseName
+   * @returns {string} Unique name among `game.actors`.
+   */
   #uniqueName(baseName) {
     const escapedName = baseName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     const regex = new RegExp(`^${escapedName}(?: \\((\\d+)\\))?$`);
@@ -377,7 +408,10 @@ class ActorService {
     return `${baseName} (${maxNum + 1})`;
   }
 
-  // load and strip down actor data for use as a template
+  /**
+   * @param {string|undefined} actorUuid
+   * @returns {Promise<object|null>} Cloned actor data without id/folder/token/module flags.
+   */
   async #getSourceActorData(actorUuid) {
     if (!actorUuid) return null;
 
@@ -400,4 +434,5 @@ class ActorService {
   }
 }
 
+/** Singleton actor service. */
 export const actor = new ActorService();

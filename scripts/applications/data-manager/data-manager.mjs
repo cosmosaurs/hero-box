@@ -1,3 +1,7 @@
+/**
+ * @fileoverview Tabbed UI for images, names, tags; optional picker mode for selecting indexed art.
+ */
+
 import { MODULE_ID, SETTINGS, PATHS } from '../../constants/index.mjs';
 import { TAB } from '../../constants/ui.mjs';
 import { getSetting, setSetting } from '../../settings.mjs';
@@ -8,7 +12,6 @@ import { ImagesTab } from './images-tab.mjs';
 import { NamesTab } from './names-tab.mjs';
 import { TagsTab } from './tags-tab.mjs';
 
-// main window for managing all module data — images, names, and tags
 export class DataManager extends BaseApplication {
   static DEFAULT_OPTIONS = {
     id: `${MODULE_ID}-data-manager`,
@@ -66,7 +69,9 @@ export class DataManager extends BaseApplication {
     [TAB.TAGS]: new TagsTab(this),
   };
 
-  // sets up the manager, optionally in picker mode with pre-applied filters
+  /**
+   * @param {{ pickerMode?: boolean, onSelect?: function(object[]): void, initialFilters?: object }} [options]
+   */
   constructor(options = {}) {
     super();
 
@@ -84,7 +89,11 @@ export class DataManager extends BaseApplication {
     this.#prefetchModules();
   }
 
-  // opens as an image picker dialog, returns selected uuids or null on cancel
+  /**
+   * Open Data Manager in picker mode; resolves with selected image uuids or `null` if cancelled.
+   * @param {object} [options]
+   * @returns {Promise<string[]|null>}
+   */
   static async pick(options = {}) {
     const { createSingleResolvePromise } = await import('../../utils/promise.mjs');
     const { promise, resolve } = createSingleResolvePromise();
@@ -105,7 +114,7 @@ export class DataManager extends BaseApplication {
     return promise;
   }
 
-  // dynamic title depending on whether we're picking or managing
+  /** @returns {string} Localized window title for picker vs manager mode. */
   get title() {
     return this.#pickerMode
       ? game.i18n.localize('cs-hero-box.imagePicker.title')
@@ -126,7 +135,7 @@ export class DataManager extends BaseApplication {
     return super.render(force, options);
   }
 
-  // unlock compendium packs so we can actually write stuff to them
+  /** @returns {Promise<void>} */
   async #unlockAllCompendiums() {
     const sources = source.getEnabledSources();
 
@@ -146,7 +155,7 @@ export class DataManager extends BaseApplication {
     }
   }
 
-  // post-render hook — wires up inputs and delegates to active tab
+  /** Binds search, journal select, header button; delegates tab `onRender`. */
   _onRender(context, options) {
     super._onRender(context, options);
     this.#bindSearchInput();
@@ -155,14 +164,14 @@ export class DataManager extends BaseApplication {
     this.#tabs[this.#activeTab].onRender();
   }
 
-  // cleanup when closing the window
+  /** Tears down the images tab (virtual scroll, worker) before base close. */
   _onClose(options) {
     this.#tabs[TAB.IMAGES].destroy();
     this.#removeOrphanedPopup();
     return super._onClose(options);
   }
 
-  // builds the full render context merging shared stuff with the active tab's data
+  /** @returns {Promise<object>} */
   async _prepareContext(options) {
     const journals = this.#getJournals();
 
@@ -182,14 +191,14 @@ export class DataManager extends BaseApplication {
     return { ...context, ...tabContext };
   }
 
-  // grabs writable journals, cached after first call
+  /** @returns {object[]} */
   #getJournals() {
     if (this.#journalsCache) return this.#journalsCache;
     this.#journalsCache = source.getWritableJournals();
     return this.#journalsCache;
   }
 
-  // figures out which journal to select by default — last used or first available
+  /** Sets `#selectedJournalId` from setting or first writable journal. */
   #initializeDefaultJournal() {
     const lastSelected = getSetting(SETTINGS.LAST_SELECTED_JOURNAL);
     const journals = this.#getJournals();
@@ -201,7 +210,7 @@ export class DataManager extends BaseApplication {
     }
   }
 
-  // preloads heavy dialog modules in idle time so they open instantly later
+  /** Idle-loads heavy dialog modules for snappier first open. */
   #prefetchModules() {
     if (typeof requestIdleCallback === 'function') {
       requestIdleCallback(() => {
@@ -213,7 +222,7 @@ export class DataManager extends BaseApplication {
     }
   }
 
-  // hooks up the search box with debounced filtering
+  /** Debounced search input bound to active tab. */
   #bindSearchInput() {
     const searchInput = this.querySelector('.cs-hero-box-data-manager__search');
     if (!searchInput) return;
@@ -226,7 +235,7 @@ export class DataManager extends BaseApplication {
     }, 300);
   }
 
-  // hooks up the journal dropdown and persists selection
+  /** Journal dropdown; persists `LAST_SELECTED_JOURNAL`. */
   #bindSelectInputs() {
     const journalSelect = this.querySelector('.cs-hero-box-data-manager__journal-select');
     if (journalSelect) {
@@ -240,7 +249,7 @@ export class DataManager extends BaseApplication {
     }
   }
 
-  // sticks a gear icon into the window header for quick access to data sources
+  /** Injects data-sources header control (non-picker). */
   #addSettingsButton() {
     if (this.#pickerMode) return;
 
@@ -263,7 +272,7 @@ export class DataManager extends BaseApplication {
     closeBtn.insertAdjacentElement('afterend', settingsBtn);
   }
 
-  // switches between images/names/tags tabs, resets the new tab's state
+  /** Switches tab; resets non-images tab state. */
   _onSwitchTab(event, target) {
     if (this.#pickerMode) return;
     const newTab = target.dataset.tab;
@@ -278,14 +287,12 @@ export class DataManager extends BaseApplication {
     this.render();
   }
 
-  // opens the data sources config dialog
+  /** @returns {Promise<void>} */
   async _onOpenDataSources() {
     const { DataSources } = await import('../data-sources/data-sources.mjs');
     const app = new DataSources();
     app.render(true);
   }
-
-  // --- action delegates, just forwarding to the right tab ---
 
   _onRefreshTagsFromNames() { this.#tabs[TAB.IMAGES].onRefreshTagsFromNames(); }
 
@@ -298,14 +305,14 @@ export class DataManager extends BaseApplication {
   _onOpenImage(e, t) { this.#tabs[TAB.IMAGES].onOpenImage(e, t); }
   _onCreateActorFromSelected() { this.#tabs[TAB.IMAGES].onCreateActorFromSelected(); }
 
-  // confirms picked images and closes the picker
+  /** Picker: invoke callback with selection and close. */
   _onConfirmSelection() {
     const uuids = this.#tabs[TAB.IMAGES].getSelectedUuids();
     if (this.#pickerCallback) this.#pickerCallback(uuids);
     this.close();
   }
 
-  // nope out of picker mode
+  /** Picker: close without confirming. */
   _onCancelSelection() { this.close(); }
 
   _onAddNameSet() { this.#tabs[TAB.NAMES].onAddNameSet(); }

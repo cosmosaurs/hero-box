@@ -1,11 +1,17 @@
+/**
+ * @fileoverview Random image selection from the tag index with race/subrace weighting.
+ */
+
 import { logger } from '../utils/index.mjs';
 import { tagIndex } from './tag-index.mjs';
 import { tag } from './tag.mjs';
 
-// picks random images from the index, with weighting for race/subrace combos
 class ImagePickerService {
-
-  // main method — pick a random image matching the given tag groups
+  /**
+   * Pick a random indexed image: OR within each group, AND across groups.
+   * @param {Record<string, string[]>} tagGroups
+   * @returns {{ uuid: string, tokenUrl: string, portraitUrl: string, scale: number, tags: string[], dynamicRing: boolean }|null}
+   */
   pickRandomByGroups(tagGroups) {
     const candidates = this.#findCandidatesByGroups(tagGroups);
 
@@ -17,7 +23,10 @@ class ImagePickerService {
     return this.#toResult(this.#weightedRandom(candidates));
   }
 
-  // find all images that match the tag groups, with special handling for race+subrace
+  /**
+   * @param {Record<string, string[]>} tagGroups
+   * @returns {object[]} Indexed images, possibly with `_pairWeight` for race/subrace fairness.
+   */
   #findCandidatesByGroups(tagGroups) {
     const races = tagGroups.race ?? [];
     const subraces = tagGroups.subrace ?? [];
@@ -74,14 +83,17 @@ class ImagePickerService {
     return allCandidates;
   }
 
-  // fetch a specific image by its page uuid
+  /**
+   * @param {string} pageUuid Journal entry page uuid.
+   * @returns {Promise<object|null>}
+   */
   async getByUuid(pageUuid) {
     const candidates = tagIndex.findByTags([]);
     const found = candidates.find(c => c.uuid === pageUuid);
     return found ? this.#toResult(found) : null;
   }
 
-  // strip internal fields and return a clean result object
+  /** @param {object|null} image Raw index entry. */
   #toResult(image) {
     if (!image) return null;
 
@@ -95,7 +107,10 @@ class ImagePickerService {
     };
   }
 
-  // pick one item from a weighted list
+  /**
+   * @param {object[]} items Entries with `_pairWeight` or `weight`.
+   * @returns {object|null}
+   */
   #weightedRandom(items) {
     if (!items.length) return null;
 
@@ -135,4 +150,5 @@ class ImagePickerService {
   }
 }
 
+/** Singleton image picker. */
 export const imagePicker = new ImagePickerService();

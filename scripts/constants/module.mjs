@@ -1,3 +1,8 @@
+/**
+ * @fileoverview Module id, asset paths, Foundry flag keys, and default image shape.
+ */
+
+/** Foundry package / module id. */
 export const MODULE_ID = 'cs-hero-box';
 
 export const PATHS = Object.freeze({

@@ -1,3 +1,7 @@
+/**
+ * @fileoverview Shared utilities barrel — logger, Foundry helpers, DOM, caching, etc.
+ */
+
 export * from './logger.mjs';
 export * from './foundry.mjs';
 export * from './system.mjs';

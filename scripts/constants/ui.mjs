@@ -1,3 +1,7 @@
+/**
+ * @fileoverview UI timing, name assembly, data-manager tabs, and actor-config selection modes.
+ */
+
 export const UI = Object.freeze({
   DEBOUNCE_DELAY: 300,
   NICKNAME_CHANCE: 0.5,

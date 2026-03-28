@@ -1,3 +1,7 @@
+/**
+ * @fileoverview Journal page editor for IMAGE_DATA, NAME_DATA, and TAG_DATA flags.
+ */
+
 import { MODULE_ID, FLAGS, DEFAULT_IMAGE_DATA, PATHS } from '../../constants/index.mjs';
 import { TAG_CATEGORY, isBuiltinTag } from '../../constants/tags.mjs';
 import { NAME_TYPE, NAME_TYPES } from '../../constants/ui.mjs';
@@ -14,7 +18,7 @@ const MODE = {
   TAG: 'tag',
 };
 
-// get all available locales from the system and active modules
+/** @returns {{ id: string, label: string }[]} */
 function getAvailableLocales() {
   const locales = new Map();
 
@@ -41,7 +45,7 @@ function getAvailableLocales() {
     .sort((a, b) => a.label.localeCompare(b.label));
 }
 
-// unified editor for images, name sets, and tags
+/** Create/edit a single journal page entry (image, name set, or tag). */
 export class Editor extends BaseFormApplication {
   static DEFAULT_OPTIONS = {
     id: `${MODULE_ID}-editor`,

@@ -1,3 +1,7 @@
+/**
+ * @fileoverview In-memory index of journal `IMAGE_DATA` entries; optional IndexedDB cache and debounced saves.
+ */
+
 import { MODULE_ID, FLAGS, DEFAULT_IMAGE_DATA } from '../constants/index.mjs';
 import { logger, getFlag } from '../utils/index.mjs';
 import { getSourcePages } from '../utils/source.mjs';
@@ -9,7 +13,7 @@ import { tag } from './tag.mjs';
 const CACHE_KEY = 'tag-index';
 const CACHE_META_KEY = 'tag-index-meta';
 
-// main index of all images and their tags — the heart of the filtering system
+/** Maps tags to image uuids and supports tag-group / URL queries. */
 class TagIndexService {
   #tagToImages = new Map();
   #imageCache = new Map();
@@ -19,7 +23,7 @@ class TagIndexService {
   #cacheDirty = false;
   #saveCacheTimer = null;
 
-  // load the index from cache or rebuild from sources
+  /** Hydrate from IndexedDB when fingerprint matches, else scan all sources. */
   async initialize() {
     if (this.#initialized || this.#initializing) return;
     this.#initializing = true;
@@ -55,7 +59,7 @@ class TagIndexService {
     }
   }
 
-  // nuke everything and rebuild from scratch
+  /** Clear memory + IndexedDB cache and rebuild from sources. */
   async reindex() {
     logger.info('Reindexing all sources...');
     this.#tagToImages.clear();
@@ -69,7 +73,10 @@ class TagIndexService {
     await this.initialize();
   }
 
-  // try to restore the index from indexeddb
+  /**
+   * @param {string[]} sources
+   * @returns {Promise<boolean>}
+   */
   async #tryLoadFromCache(sources) {
     const opened = await indexCache.open();
     if (!opened) return false;
@@ -102,7 +109,7 @@ class TagIndexService {
     }
   }
 
-  // persist the index to indexeddb for faster startup
+  /** @param {string[]} sources */
   async #saveToCache(sources) {
     try {
       const opened = await indexCache.open();
@@ -134,12 +141,12 @@ class TagIndexService {
     }
   }
 
-  // unique id based on enabled sources — if it changes, we need to reindex
+  /** @param {string[]} sources */
   #buildFingerprint(sources) {
     return sources.sort().join('|') + '|' + game.world.id;
   }
 
-  // update a single image in the index
+  /** Debounce persisting index to IndexedDB after mutations. */
   #markCacheDirty() {
     this.#cacheDirty = true;
     if (this.#saveCacheTimer) {
@@ -155,6 +162,10 @@ class TagIndexService {
     }, 2000);
   }
 
+  /**
+   * @param {string} uuid Journal page uuid.
+   * @param {object|null} newImageData `IMAGE_DATA` shape or null to remove.
+   */
   updateImage(uuid, newImageData) {
     if (!this.#initialized) return;
     this.#removeImageInternal(uuid);
@@ -164,7 +175,9 @@ class TagIndexService {
     this.#markCacheDirty();
   }
 
-  // batch update multiple images
+  /**
+   * @param {{ uuid: string, imageData: object|null }[]} updates
+   */
   updateImages(updates) {
     if (!this.#initialized) return;
     for (const { uuid, imageData } of updates) {
@@ -176,7 +189,10 @@ class TagIndexService {
     this.#markCacheDirty();
   }
 
-  // update just the tags for an image (faster than full update)
+  /**
+   * @param {string} uuid
+   * @param {string[]} newTags
+   */
   updateImageTags(uuid, newTags) {
     if (!this.#initialized) return;
     const existing = this.#imageCache.get(uuid);
@@ -200,7 +216,10 @@ class TagIndexService {
     this.#markCacheDirty();
   }
 
-  // add many images at once (used during import)
+  /**
+   * @param {{ uuid: string, imageData: object }[]} images
+   * @param {string|null} [sourceId]
+   */
   bulkAddImages(images, sourceId = null) {
     if (!this.#initialized) return;
     for (const { uuid, imageData } of images) {
@@ -210,19 +229,25 @@ class TagIndexService {
     this.#markCacheDirty();
   }
 
-  // remove an image from all indexes
+  /** @param {string} uuid */
   removeImage(uuid) {
     if (!this.#initialized) return;
     this.#removeImageInternal(uuid);
     this.#markCacheDirty();
   }
 
+  /** @param {string[]} uuids */
   removeImages(uuids) {
     if (!this.#initialized) return;
     for (const uuid of uuids) this.#removeImageInternal(uuid);
     this.#markCacheDirty();
   }
 
+  /**
+   * @param {string} uuid
+   * @param {object} imageData
+   * @param {string|null} [sourceId]
+   */
   addImage(uuid, imageData, sourceId = null) {
     if (!this.#initialized) return;
     if (this.#imageCache.has(uuid)) this.#removeImageInternal(uuid);
@@ -230,6 +255,7 @@ class TagIndexService {
     this.#markCacheDirty();
   }
 
+  /** Remove one image from tag sets and URL index. */
   #removeImageInternal(uuid) {
     const existing = this.#imageCache.get(uuid);
     if (!existing) return;
@@ -248,7 +274,10 @@ class TagIndexService {
     this.#imageCache.delete(uuid);
   }
 
-  // extract the journal uuid from a page uuid
+  /**
+   * @param {string} pageUuid
+   * @returns {string} Parent journal uuid.
+   */
   getJournalUuid(pageUuid) {
     const existing = this.#imageCache.get(pageUuid);
     if (existing?.journalUuid) return existing.journalUuid;
@@ -256,29 +285,41 @@ class TagIndexService {
     return parts.slice(0, -1).join('.');
   }
 
-  // extract just the page id from a full uuid
+  /**
+   * @param {string} pageUuid
+   * @returns {string} Embedded page document id.
+   */
   getPageId(pageUuid) {
     const parts = pageUuid.split('.');
     return parts[parts.length - 1];
   }
 
-  // get the raw image cache map
+  /** @returns {Map<string, object>} */
   getAllImages() {
     return this.#imageCache;
   }
 
-  // get all images as an array
+  /** @returns {object[]} */
   getAllImagesArray() {
     return Array.from(this.#imageCache.values());
   }
 
-  // build the search string we use for text filtering
+  /**
+   * @param {string} tokenUrl
+   * @param {string} portraitUrl
+   * @param {string[]} tags
+   * @returns {string}
+   */
   #buildSearchString(tokenUrl, portraitUrl, tags) {
     const tagLabels = tags.map(t => tag.getLabel(t));
     return [tokenUrl, portraitUrl, ...tags, ...tagLabels].join(' ').toLowerCase();
   }
 
-  // add an image to all the internal indexes
+  /**
+   * @param {string} uuid Page uuid.
+   * @param {object} imageData `IMAGE_DATA` flag body.
+   * @param {string|null} [sourceId]
+   */
   #addImageToIndex(uuid, imageData, sourceId = null) {
     const tokenUrl = imageData.tokenUrl || imageData.url || '';
     const portraitUrl = imageData.portraitUrl || derivePortraitUrl(tokenUrl);
@@ -311,7 +352,11 @@ class TagIndexService {
     }
   }
 
-  // find all images that have ALL the specified tags
+  /**
+   * AND semantics: image must include every listed tag.
+   * @param {string[]} requiredTags Empty = all images.
+   * @returns {object[]}
+   */
   findByTags(requiredTags) {
     if (!this.#initialized) {
       logger.warn('Tag index not initialized');
@@ -336,7 +381,11 @@ class TagIndexService {
     return Array.from(resultUuids).map(uuid => this.#imageCache.get(uuid)).filter(Boolean);
   }
 
-  // find images matching tag groups (OR within groups, AND between groups)
+  /**
+   * OR within each non-empty group, AND across groups.
+   * @param {Record<string, string[]>} tagGroups
+   * @returns {object[]}
+   */
   findByTagGroups(tagGroups) {
     if (!this.#initialized) {
       logger.warn('Tag index not initialized');
@@ -365,24 +414,24 @@ class TagIndexService {
     return Array.from(resultUuids).map(uuid => this.#imageCache.get(uuid)).filter(Boolean);
   }
 
-  // find an image by its token or portrait url
+  /** @param {string} url */
   findByUrl(url) {
     if (!this.#initialized || !url) return null;
     return this.#urlIndex.get(url) ?? null;
   }
 
-  // get a single image by its uuid
+  /** @param {string} uuid */
   getByUuid(uuid) {
     if (!this.#initialized) return null;
     return this.#imageCache.get(uuid) ?? null;
   }
 
-  // get a sorted list of all tags in the index
+  /** @returns {string[]} */
   getAllTags() {
     return Array.from(this.#tagToImages.keys()).sort();
   }
 
-  // get count stats for the ui
+  /** @returns {{ totalImages: number, totalTags: number, tagCounts: Map<string, number> }} */
   getStats() {
     const tagCounts = new Map();
     for (const [tagId, uuids] of this.#tagToImages) {
@@ -395,11 +444,12 @@ class TagIndexService {
     };
   }
 
+  /** True after `initialize()` finished (including empty-source short path). */
   get isInitialized() {
     return this.#initialized;
   }
 
-  // index all pages from a single source
+  /** @param {string} sourceId */
   async #indexSource(sourceId) {
     const timer = logger.time(`Indexing source: ${sourceId}`);
     try {
@@ -412,14 +462,14 @@ class TagIndexService {
     }
   }
 
-  // index a single page if it has image data
+  /** @param {JournalEntryPage} page */
   #indexPage(page, sourceId) {
     const imageData = getFlag(page, FLAGS.IMAGE_DATA);
     if (!imageData?.tokenUrl && !imageData?.url) return;
     this.#addImageToIndex(page.uuid, imageData, sourceId);
   }
 
-  // fast set intersection helper
+  /** @param {Set<string>} setA @param {Set<string>} setB */
   #intersect(setA, setB) {
     const [smaller, larger] = setA.size <= setB.size ? [setA, setB] : [setB, setA];
     const result = new Set();
@@ -430,4 +480,5 @@ class TagIndexService {
   }
 }
 
+/** Singleton tag index. */
 export const tagIndex = new TagIndexService();

@@ -1,6 +1,14 @@
+/**
+ * @fileoverview Label sorting with Russian-first ordering for mixed lists.
+ */
+
 const RUSSIAN_REGEX = /^[а-яё]/i;
 
-// compare two items by label, russian text goes first
+/**
+ * @param {{ label?: string, name?: string }|string} a
+ * @param {{ label?: string, name?: string }|string} b
+ * @returns {number}
+ */
 export function compareByLabel(a, b) {
   const aLabel = (a.label ?? a.name ?? a ?? '').toLowerCase();
   const bLabel = (b.label ?? b.name ?? b ?? '').toLowerCase();
@@ -14,7 +22,11 @@ export function compareByLabel(a, b) {
   return aLabel.localeCompare(bLabel, 'ru');
 }
 
-// returns a new sorted-by-label copy of the array
+/**
+ * @template T
+ * @param {T[]} items
+ * @returns {T[]}
+ */
 export function sortByLabel(items) {
   return [...items].sort(compareByLabel);
 }

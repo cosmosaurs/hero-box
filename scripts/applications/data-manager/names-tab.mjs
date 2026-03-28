@@ -1,10 +1,14 @@
+/**
+ * @fileoverview Data Manager "Names" tab: list/filter name sets, CRUD, test generation.
+ */
+
 import { NAME_TYPES } from '../../constants/ui.mjs';
 import { logger } from '../../utils/index.mjs';
 import { buildSidebarCategories, handleTagToggle } from '../../utils/sidebar.mjs';
 import { nameGenerator, tag } from '../../services/index.mjs';
 import { sortByLabel } from '../../utils/sort.mjs';
 
-// handles the names tab — loading name sets, filtering, sidebar, crud ops
+/** Tab logic for name sets; `app` is the parent DataManager. */
 export class NamesTab {
   #app = null;
   #filters = { tags: [], search: '', types: [] };
@@ -14,20 +18,23 @@ export class NamesTab {
   #filteredCache = null;
   #lastFilterKey = '';
 
+  /** @param {import('./data-manager.mjs').DataManager} app */
   constructor(app) {
     this.#app = app;
   }
 
+  /** @returns {string} */
   get searchQuery() { return this.#filters.search; }
+  /** @returns {boolean} */
   get hasFilters() { return this.#filters.tags.length > 0 || this.#filters.search.length > 0 || this.#filters.types.length > 0; }
 
-  // updates search and invalidates filtered cache
+  /** @param {string} query */
   setSearchQuery(query) {
     this.#filters.search = query;
     this.#filteredCache = null;
   }
 
-  // clears all filters back to defaults
+  /** Clear sidebar filters and search. */
   reset() {
     this.#filters = { tags: [], search: '', types: [] };
     this.#sortedCache = null;
@@ -35,14 +42,14 @@ export class NamesTab {
     this.#lastFilterKey = '';
   }
 
-  // blows away all cached data so everything gets reloaded
+  /** Drop loaded name-set list and filter caches. */
   invalidateCache() {
     this.#sortedCache = null;
     this.#filteredCache = null;
     this.#lastFilterKey = '';
   }
 
-  // builds the full context for rendering the names tab
+  /** @returns {Promise<object>} Handlebars context for the names tab. */
   async prepareContext() {
     const allSets = nameGenerator.getAllSets();
 
@@ -81,7 +88,7 @@ export class NamesTab {
     };
   }
 
-  // applies type, tag, and search filters to the sorted name sets
+  /** @returns {object[]} */
   #getFilteredSets() {
     const filterKey = this.#buildFilterKey();
     if (filterKey === this.#lastFilterKey && this.#filteredCache) {
@@ -116,17 +123,17 @@ export class NamesTab {
     return result;
   }
 
-  // creates a string key from current filters for cache invalidation checks
+  /** @returns {string} */
   #buildFilterKey() {
     return `${this.#filters.types.join(',')}|${this.#filters.tags.join(',')}|${this.#filters.search}`;
   }
 
-  // post-render hook — restores collapsed sidebar groups
+  /** Called after tab render; restore sidebar collapse state. */
   onRender() {
     this.#restoreCollapsedGroups();
   }
 
-  // opens editor for creating a new name set
+  /** Open name editor for a new journal page in the selected source. */
   async onAddNameSet() {
     if (!this.#app.selectedJournalId) return;
     const { Editor } = await import('../editor/editor.mjs');
@@ -138,7 +145,7 @@ export class NamesTab {
     }
   }
 
-  // opens editor for an existing name set
+  /** @param {Event} event @param {HTMLElement} target */
   async onEditNameSet(event, target) {
     const uuid = target.closest('[data-uuid]').dataset.uuid;
     try {
@@ -157,7 +164,7 @@ export class NamesTab {
     }
   }
 
-  // deletes a name set after confirmation
+  /** @param {Event} event @param {HTMLElement} target */
   async onDeleteNameSet(event, target) {
     const uuid = target.closest('[data-uuid]').dataset.uuid;
 
@@ -182,7 +189,7 @@ export class NamesTab {
     }
   }
 
-  // generates a random name from the set's tags and copies it to clipboard
+  /** Generate a sample name from row tags and copy to clipboard. */
   async onTestGenerate(event, target) {
     const tags = target.dataset.tags?.split(',').filter(Boolean) ?? [];
     const name = nameGenerator.generate(tags);
@@ -203,7 +210,7 @@ export class NamesTab {
     ui.notifications.info(game.i18n.format('cs-hero-box.dataManager.testResult', { name }));
   }
 
-  // toggles a tag or type filter in the sidebar
+  /** Sidebar tag or name-type filter toggle. @param {Event} event @param {HTMLElement} target */
   onToggleTag(event, target) {
     const tagId = target.dataset.tag;
     const isTypeFilter = target.dataset.typeFilter === 'true';
@@ -213,7 +220,7 @@ export class NamesTab {
     this.#app.render();
   }
 
-  // collapses/expands a sidebar tag group
+  /** @param {Event} event @param {HTMLElement} target */
   onToggleTagGroup(event, target) {
     const group = target.closest('.cs-hero-box-data-manager__tag-group');
     if (group) {
@@ -228,7 +235,7 @@ export class NamesTab {
     }
   }
 
-  // re-applies collapsed state to groups after re-render without animation glitch
+  /** Re-apply `.collapsed` on sidebar groups after re-render. */
   #restoreCollapsedGroups() {
     for (const category of this.#collapsedGroups) {
       const group = this.#app.querySelector(`.cs-hero-box-data-manager__tag-group[data-category="${category}"]`);
@@ -239,5 +246,84 @@ export class NamesTab {
         });
       }
     }
+  }
+}
+
+  /** @returns {Promise<object[]>} */
+  async #loadNameSets() {
+    if (this.#nameSetCacheValid && this.#nameSetCache) {
+      return this.#nameSetCache;
+    }
+
+    const sources = source.getDataSources();
+    const nameSets = [];
+
+    for (const sourceId of sources) {
+      try {
+        const pages = await getSourcePages(sourceId);
+        const sourceName = source.getSourceName(sourceId);
+
+        for (const page of pages) {
+          const nameData = getFlag(page, FLAGS.NAME_DATA);
+          if (!nameData) continue;
+
+          const tags = this.#extractTags(nameData);
+          const locales = Object.keys(nameData.names ?? {});
+
+          const tagsDisplay = tags.map(t => tag.getLabel(t)).join(', ');
+          const localesDisplay = locales.join(', ');
+
+          nameSets.push({
+            uuid: page.uuid,
+            name: page.name,
+            type: nameData.type ?? 'firstName',
+            tags,
+            tagsDisplay,
+            localesDisplay,
+            sourceName,
+            searchString: [page.name, ...tags, tagsDisplay].join(' ').toLowerCase(),
+          });
+        }
+      } catch (error) {
+        logger.warn(`Failed to load names from source ${sourceId}:`, error);
+      }
+    }
+
+    this.#nameSetCache = nameSets;
+    this.#nameSetCacheValid = true;
+    return nameSets;
+  }
+
+  /**
+   * @param {object} nameData
+   * @returns {string[]}
+   */
+  #extractTags(nameData) {
+    if (nameData.tags) return nameData.tags;
+
+    const tags = [];
+    if (nameData.genders?.length) tags.push(...nameData.genders);
+    if (nameData.races?.length) tags.push(...nameData.races);
+    if (nameData.subraces?.length) tags.push(...nameData.subraces);
+    return tags;
+  }
+
+  /**
+   * @param {object[]} nameSets
+   * @returns {Map<string, number>}
+   */
+  #buildTagCounts(nameSets) {
+    const counts = new Map();
+
+    for (const set of nameSets) {
+      const type = set.type ?? 'firstName';
+      counts.set(type, (counts.get(type) ?? 0) + 1);
+
+      for (const t of set.tags) {
+        counts.set(t, (counts.get(t) ?? 0) + 1);
+      }
+    }
+
+    return counts;
   }
 }

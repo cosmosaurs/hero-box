@@ -1,42 +1,45 @@
+/**
+ * @fileoverview ApplicationV2 base with scroll/focus preservation and debounced events.
+ */
+
 import { debounce } from '../../utils/dom.mjs';
 import { UI } from '../../constants/ui.mjs';
 
 const { ApplicationV2, HandlebarsApplicationMixin } = foundry.applications.api;
 
-// base class for all our app windows — handles common stuff like scroll/focus restoration
 export class BaseApplication extends HandlebarsApplicationMixin(ApplicationV2) {
   #eventCleanup = [];
   #scrollPositions = new Map();
   #focusedElement = null;
   #selectionRange = null;
 
-  // center the window on first render
+  /** @param {object} context @param {object} options */
   _onFirstRender(context, options) {
     super._onFirstRender(context, options);
     this.#centerWindow();
   }
 
-  // save scroll and focus state before re-render
+  /** @param {object} context @param {object} options */
   _preRender(context, options) {
     this.#saveScrollPositions();
     this.#saveFocusState();
     return super._preRender(context, options);
   }
 
-  // restore scroll and focus after re-render
+  /** @param {object} context @param {object} options */
   _onRender(context, options) {
     super._onRender(context, options);
     this.#restoreScrollPositions();
     this.#restoreFocusState();
   }
 
-  // clean up event listeners when closing
+  /** Remove debounced/listeners registered via `addEvent` / `addDebouncedEvent`. */
   _onClose(options) {
     this.#cleanup();
     return super._onClose(options);
   }
 
-  // position window in the center of the screen
+  /** Center the application window in the viewport. */
   #centerWindow() {
     requestAnimationFrame(() => {
       const { width, height } = this.element.getBoundingClientRect();
@@ -46,7 +49,7 @@ export class BaseApplication extends HandlebarsApplicationMixin(ApplicationV2) {
     });
   }
 
-  // remember scroll positions for elements with data-scroll-id
+  /** Persist `scrollTop` for `[data-scroll-id]` elements. */
   #saveScrollPositions() {
     if (!this.element) return;
 
@@ -55,7 +58,7 @@ export class BaseApplication extends HandlebarsApplicationMixin(ApplicationV2) {
     }
   }
 
-  // put scroll positions back after re-render
+  /** Restore scroll positions after re-render. */
   #restoreScrollPositions() {
     if (!this.element) return;
 
@@ -67,7 +70,7 @@ export class BaseApplication extends HandlebarsApplicationMixin(ApplicationV2) {
     }
   }
 
-  // remember which input was focused and cursor position
+  /** Remember focused input and selection range. */
   #saveFocusState() {
     if (!this.element) return;
 
@@ -89,7 +92,7 @@ export class BaseApplication extends HandlebarsApplicationMixin(ApplicationV2) {
     }
   }
 
-  // restore focus and cursor position after re-render
+  /** Restore focus to the previously active field. */
   #restoreFocusState() {
     if (!this.element || !this.#focusedElement) return;
 
@@ -109,7 +112,7 @@ export class BaseApplication extends HandlebarsApplicationMixin(ApplicationV2) {
     this.#selectionRange = null;
   }
 
-  // remove all registered event listeners
+  /** Remove listeners registered via `addEvent`. */
   #cleanup() {
     for (const cleanup of this.#eventCleanup) {
       cleanup();
@@ -118,40 +121,50 @@ export class BaseApplication extends HandlebarsApplicationMixin(ApplicationV2) {
     this.#scrollPositions.clear();
   }
 
-  // shortcut for querySelector on this app's element
+  /** @param {string} selector */
   querySelector(selector) {
     return this.element?.querySelector(selector) ?? null;
   }
 
-  // shortcut for querySelectorAll that returns an array
+  /** @param {string} selector @returns {Element[]} */
   querySelectorAll(selector) {
     return this.element ? Array.from(this.element.querySelectorAll(selector)) : [];
   }
 
-  // add an event listener that will be auto-cleaned on close
+  /**
+   * @param {EventTarget} element
+   * @param {string} event
+   * @param {EventListener} handler
+   */
   addEvent(element, event, handler) {
     if (!element) return;
     element.addEventListener(event, handler);
     this.#eventCleanup.push(() => element.removeEventListener(event, handler));
   }
 
-  // add a debounced event listener
+  /**
+   * Like `addEvent` but debounced by `wait` ms.
+   * @param {EventTarget} element
+   * @param {string} event
+   * @param {function(Event): void} handler
+   * @param {number} [wait]
+   */
   addDebouncedEvent(element, event, handler, wait = UI.DEBOUNCE_DELAY) {
     this.addEvent(element, event, debounce(handler, wait));
   }
 
-  // manually save a scroll position (for virtual scroll etc)
+  /** @param {string} id @param {number} value */
   saveScrollPosition(id, value) {
     this.#scrollPositions.set(id, value);
   }
 
-  // get a saved scroll position
+  /** @param {string} id */
   getScrollPosition(id) {
     return this.#scrollPositions.get(id);
   }
 }
 
-// form version of base app — just sets the tag to form
+/** Form-root variant of `BaseApplication`. */
 export class BaseFormApplication extends BaseApplication {
   static DEFAULT_OPTIONS = {
     tag: 'form',

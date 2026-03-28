@@ -1,3 +1,7 @@
+/**
+ * @fileoverview Data Manager "Images" tab: grid, filters, worker offload, selection, previews.
+ */
+
 import { TAG_CATEGORY } from '../../constants/tags.mjs';
 import { MODULE_ID, FLAGS } from '../../constants/index.mjs';
 import { logger } from '../../utils/index.mjs';
@@ -9,7 +13,7 @@ import { filterWorker } from '../../utils/filter-worker-bridge.mjs';
 import { CollapsedGroupsManager } from '../../utils/collapsed-groups.mjs';
 import { MODE } from '../import-image/image-import.mjs';
 
-// handles everything on the images tab — filtering, selection, virtual scroll, popups
+/** Tab logic for indexed images; `app` is the parent DataManager. */
 export class ImagesTab {
   #app = null;
   #filters = { tags: [], search: '' };
@@ -38,14 +42,17 @@ export class ImagesTab {
 
   #workerInitialized = false;
 
+  /** @param {import('./data-manager.mjs').DataManager} app */
   constructor(app) {
     this.#app = app;
   }
 
+  /** @returns {string} */
   get searchQuery() { return this.#filters.search; }
+  /** @returns {boolean} */
   get hasFilters() { return this.#filters.tags.length > 0 || this.#filters.search.length > 0; }
 
-  // updates the search text and bumps the version so we know to re-filter
+  /** @param {string} query */
   setSearchQuery(query) {
     const newQuery = query.toLowerCase();
     if (newQuery !== this.#filters.search) {
@@ -54,7 +61,9 @@ export class ImagesTab {
     }
   }
 
-  // takes initial filter config (from picker mode) and shoves all tags into our filter list
+  /**
+   * @param {{ race?: string[], gender?: string[], age?: string[], role?: string[], subrace?: Record<string, string[]> }} filters
+   */
   applyInitialFilters(filters) {
     if (filters.race?.length) this.#filters.tags.push(...filters.race);
     if (filters.gender?.length) this.#filters.tags.push(...filters.gender);
@@ -69,24 +78,24 @@ export class ImagesTab {
     this.#searchFilterVersion++;
   }
 
-  // nukes all filters and selection — fresh start
+  /** Clear filters, selection, and image caches. */
   reset() {
     this.#filters = { tags: [], search: '' };
     this.#clearSelection();
     this.#invalidateAll();
   }
 
-  // just clears image selection without touching filters
+  /** Clear selection only; keep filters. */
   resetSelection() {
     this.#clearSelection();
   }
 
-  // forces a full cache rebuild on next render
+  /** Bump filter versions so tag/search caches rebuild. */
   invalidateCache() {
     this.#invalidateAll();
   }
 
-  // builds the context object for rendering the images tab
+  /** @returns {Promise<object>} */
   async prepareContext() {
     await this.#ensureWorker();
     this.#ensureTagFiltered();
@@ -115,7 +124,7 @@ export class ImagesTab {
     };
   }
 
-  // spins up the web worker if we haven't yet
+  /** @returns {Promise<void>} */
   async #ensureWorker() {
     if (this.#workerInitialized) return;
     const totalImages = tagIndex.getStats().totalImages;
@@ -123,7 +132,7 @@ export class ImagesTab {
     this.#workerInitialized = true;
   }
 
-  // applies tag filters if they changed since last time
+  /** Recompute `#tagFilteredImages` when tag filters changed. */
   #ensureTagFiltered() {
     if (this.#lastTagVersion === this.#tagFilterVersion && this.#tagFilteredImages) return;
 
@@ -142,7 +151,7 @@ export class ImagesTab {
     this.#lastSearchVersion = -1;
   }
 
-  // applies search filter on top of tag-filtered results, tries worker first
+  /** @returns {Promise<void>} */
   async #ensureSearchFiltered() {
     if (this.#lastSearchVersion === this.#searchFilterVersion && this.#filteredImages) return;
 
@@ -171,7 +180,7 @@ export class ImagesTab {
     this.#lastSearchVersion = this.#searchFilterVersion;
   }
 
-  // blows up all caches — the nuclear option
+  /** Invalidate tag/search caches and sidebar stats. */
   #invalidateAll() {
     this.#tagFilterVersion++;
     this.#searchFilterVersion++;
@@ -180,7 +189,7 @@ export class ImagesTab {
     this.#statsCache = null;
   }
 
-  // called after DOM is ready — sets up scroll, card interactions, collapsed groups
+  /** Mount virtual grid, restore scroll, bind hover UI. */
   onRender() {
     this.#setupVirtualScroll();
     this.#restoreScrollPosition();
@@ -188,7 +197,7 @@ export class ImagesTab {
     this.#restoreCollapsedGroups();
   }
 
-  // creates the virtual scroll grid and hooks up resize observer
+  /** Create `VirtualScrollGrid` and `ResizeObserver` for the image grid. */
   #setupVirtualScroll() {
     const container = this.#app.querySelector('.cs-hero-box-data-manager__grid-container');
     if (!container) return;
@@ -220,7 +229,7 @@ export class ImagesTab {
     this.#resizeObserver.observe(container);
   }
 
-  // builds a single card DOM element for an image entry
+  /** @param {object} img @returns {HTMLDivElement} */
   #createCardElement(img) {
     const isSelected = this.#selectAllActive || this.#selectedImages.has(img.uuid);
     const isLastSelected = img.uuid === this.#lastSelectedUuid;
@@ -238,7 +247,7 @@ export class ImagesTab {
     return card;
   }
 
-  // opens the image import dialog for adding a new image
+  /** @returns {Promise<void>} */
   async onAddImage() {
     if (!this.#app.selectedJournalId) return;
     const { ImageImport } = await import('../import-image/image-import.mjs');
@@ -246,7 +255,6 @@ export class ImagesTab {
     if (success) this.#refreshAfterChange();
   }
 
-  // same as add, but conceptually for folder import (same dialog tho)
   async onImportFromFolder() {
     if (!this.#app.selectedJournalId) return;
     const { ImageImport } = await import('../import-image/image-import.mjs');
@@ -254,7 +262,7 @@ export class ImagesTab {
     if (success) this.#refreshAfterChange();
   }
 
-  // handles click on a card — supports ctrl/shift multi-select
+  /** Card click: single, ctrl, or shift range selection. */
   onSelectImage(event, target) {
     const card = target.closest('[data-uuid]');
     if (!card) return;
@@ -296,12 +304,12 @@ export class ImagesTab {
     this.#updateSelectionUI();
   }
 
-  // grabs all uuids from currently filtered images
+  /** @returns {string[]} */
   #getFilteredUuids() {
     return (this.#filteredImages ?? []).map(img => img.uuid);
   }
 
-  // converts "select all" flag into actual individual selections
+  /** Replace logical "select all" with concrete uuid set. */
   #materializeSelectAll() {
     if (!this.#selectAllActive) return;
     this.#selectAllActive = false;
@@ -310,7 +318,6 @@ export class ImagesTab {
     }
   }
 
-  // opens the editor for all selected images
   async onEditSelected() {
     const uuids = this.#getEffectiveSelection();
     if (uuids.length === 0) return;
@@ -340,7 +347,7 @@ export class ImagesTab {
     }
   }
 
-  // refreshes display after editing without blowing away the whole cache
+  /** Refresh indexed rows and virtual list after inline flag edits. */
   #refreshAfterEditInPlace() {
     this.#statsCache = null;
 
@@ -364,7 +371,7 @@ export class ImagesTab {
     this.#updateSidebarCounts();
   }
 
-  // re-parses filenames of selected images and adds any matching tags they're missing
+  /** @returns {Promise<void>} */
   async onRefreshTagsFromNames() {
     const uuids = this.#getEffectiveSelection();
     if (uuids.length === 0) return;
@@ -493,7 +500,7 @@ export class ImagesTab {
     this.#refreshAfterEditInPlace();
   }
 
-  // returns the actual list of selected uuids, expanding "select all" if needed
+  /** @returns {string[]} */
   #getEffectiveSelection() {
     if (this.#selectAllActive) {
       return this.#getFilteredUuids();
@@ -501,14 +508,13 @@ export class ImagesTab {
     return Array.from(this.#selectedImages);
   }
 
-  // resets selection state completely
   #clearSelection() {
     this.#selectedImages.clear();
     this.#lastSelectedUuid = null;
     this.#selectAllActive = false;
   }
 
-  // deletes selected images with confirmation, does the actual deletion in the background
+  /** @returns {Promise<void>} */
   async onDeleteSelected() {
     const uuids = this.#getEffectiveSelection();
     if (uuids.length === 0) return;
@@ -534,7 +540,7 @@ export class ImagesTab {
     this.#executeBackgroundDeletion(pagesByJournal);
   }
 
-  // groups page uuids by their parent journal for batch operations
+  /** @param {string[]} uuids @returns {Map<string, string[]>} */
   #groupUuidsByJournal(uuids) {
     const pagesByJournal = new Map();
     for (const uuid of uuids) {
@@ -554,7 +560,7 @@ export class ImagesTab {
     return pagesByJournal;
   }
 
-  // fires off all journal deletions in parallel, doesn't block the ui
+  /** @param {Map<string, string[]>} pagesByJournal @returns {Promise<void>} */
   async #executeBackgroundDeletion(pagesByJournal) {
     await Promise.allSettled(
       Array.from(pagesByJournal.entries()).map(([journalUuid, pageIds]) =>
@@ -563,7 +569,11 @@ export class ImagesTab {
     );
   }
 
-  // deletes pages from a single journal, picks the best strategy based on how many we're nuking
+  /**
+   * @param {string} journalUuid
+   * @param {string[]} pageIds
+   * @returns {Promise<void>}
+   */
   async #deleteFromJournal(journalUuid, pageIds) {
     try {
       const journal = await fromUuid(journalUuid);
@@ -604,7 +614,6 @@ export class ImagesTab {
     }
   }
 
-  // toggles select all — if already all selected, deselects everything
   onSelectAll() {
     if (this.#selectAllActive) {
       this.#selectAllActive = false;
@@ -621,13 +630,13 @@ export class ImagesTab {
     this.#updateSelectionUI();
   }
 
-  // pops open the full-size image viewer
+  /** Full-size `ImagePopout` for card preview URL. */
   onOpenImage(event, target) {
     event.stopPropagation();
     new ImagePopout(target.dataset.url).render(true);
   }
 
-  // handles clicking a tag in the sidebar — toggles it and re-filters everything
+  /** Sidebar tag filter; clears selection and invalidates caches. */
   onToggleTag(event, target) {
     const tagId = target.dataset.tag;
     handleTagToggle(this.#filters, tagId, tag);
@@ -640,7 +649,7 @@ export class ImagesTab {
     this.#app.render();
   }
 
-  // collapses/expands a tag group in the sidebar
+  /** Collapse/expand sidebar category group. */
   onToggleTagGroup(event, target) {
     const group = target.closest('.cs-hero-box-data-manager__tag-group');
     if (group) {
@@ -654,12 +663,12 @@ export class ImagesTab {
     }
   }
 
-  // returns the selected uuids for the picker callback
+  /** @returns {string[]} */
   getSelectedUuids() {
     return this.#getEffectiveSelection();
   }
 
-  // creates an actor from the selected images via the actor config dialog
+  /** @returns {Promise<void>} */
   async onCreateActorFromSelected() {
     const selectedUuids = this.#getEffectiveSelection();
     if (selectedUuids.length === 0) return;
@@ -690,7 +699,7 @@ export class ImagesTab {
     }
   }
 
-  // patches the sidebar tag counts and total without a full re-render
+  /** Patch sidebar counts and total label without full re-render. */
   #updateSidebarCounts() {
     this.#statsCache = tagIndex.getStats();
     const sidebar = this.#app.querySelector('.cs-hero-box-data-manager__tag-list');
@@ -715,7 +724,7 @@ export class ImagesTab {
     }
   }
 
-  // sets up hover listeners on the grid container for card popups (delegated)
+  /** Delegated hover handlers for card detail popup (non-picker). */
   #bindCardInteractions() {
     if (this.#app.pickerMode) return;
     const container = this.#app.querySelector('.cs-hero-box-data-manager__grid-container');
@@ -742,7 +751,7 @@ export class ImagesTab {
     );
   }
 
-  // mouse entered a card — cancel any pending hide and show the popup
+  /** @param {HTMLElement} card */
   #handleCardEnter(card) {
     if (this.#popupHideTimeout) {
       clearTimeout(this.#popupHideTimeout);
@@ -752,7 +761,7 @@ export class ImagesTab {
     this.#showPopup(card);
   }
 
-  // mouse left a card — schedule hiding unless we moved to the popup itself
+  /** @param {HTMLElement} card @param {MouseEvent} event */
   #handleCardLeave(card, event) {
     const relatedTarget = event.relatedTarget;
     if (relatedTarget?.closest('.cs-hero-box-data-manager__card') === card) return;
@@ -760,7 +769,6 @@ export class ImagesTab {
     this.#scheduleHidePopup();
   }
 
-  // hides the popup after a short delay so it doesn't flicker
   #scheduleHidePopup() {
     if (this.#popupHideTimeout) clearTimeout(this.#popupHideTimeout);
     this.#popupHideTimeout = setTimeout(() => {
@@ -770,7 +778,7 @@ export class ImagesTab {
     }, 100);
   }
 
-  // renders the hover popup next to a card with token/portrait previews and tags
+  /** @param {HTMLElement} card */
   #showPopup(card) {
     const uuid = card.dataset.uuid;
     const img = tagIndex.getByUuid(uuid);
@@ -817,7 +825,7 @@ export class ImagesTab {
     this.#popupElement.style.visibility = 'visible';
   }
 
-  // hides the popup (just css, doesn't remove it from dom)
+  /** Hide hover popup via CSS. */
   #hidePopup() {
     if (this.#popupElement) {
       this.#popupElement.style.opacity = '0';
@@ -826,7 +834,7 @@ export class ImagesTab {
     this.#currentHoveredCard = null;
   }
 
-  // full refresh after adding/removing images
+  /** After import/add: save scroll, clear caches, re-render manager. */
   #refreshAfterChange() {
     this.#saveScrollPosition();
     this.#clearSelection();
@@ -834,7 +842,7 @@ export class ImagesTab {
     this.#app.render();
   }
 
-  // saves current scroll position so we can restore it after re-render
+  /** Store grid `scrollTop` for post-render restore. */
   #saveScrollPosition() {
     const container = this.#app.querySelector('.cs-hero-box-data-manager__grid-container');
     if (container) {
@@ -851,7 +859,7 @@ export class ImagesTab {
     this.#pendingScrollTop = null;
   }
 
-  // updates card selection classes without re-rendering the whole thing
+  /** Update visible card selected classes and toolbar. */
   #updateSelectionUI() {
     if (!this.#virtualScroll) return;
 
@@ -865,7 +873,7 @@ export class ImagesTab {
     this.#updateToolbarState();
   }
 
-  // syncs toolbar buttons and selection count with current state
+  /** Selection count and action button disabled state. */
   #updateToolbarState() {
     const toolbar = this.#app.querySelector('.cs-hero-box-data-manager__toolbar');
     if (!toolbar) return;
@@ -887,7 +895,6 @@ export class ImagesTab {
       .forEach(btn => btn.disabled = !hasSelection);
   }
 
-  // re-applies collapsed state to sidebar groups after re-render (skips animation)
   #restoreCollapsedGroups() {
     for (const category of this.#collapsedGroups) {
       const group = this.#app.querySelector(`.cs-hero-box-data-manager__tag-group[data-category="${category}"]`);
@@ -900,7 +907,7 @@ export class ImagesTab {
     }
   }
 
-  // tears down everything — listeners, virtual scroll, popup, worker
+  /** Remove listeners, virtual scroll, popup, and filter worker. */
   destroy() {
     for (const cleanup of this.#cardListenerCleanups) cleanup();
     this.#cardListenerCleanups = [];
@@ -931,7 +938,9 @@ export class ImagesTab {
 }
 
 
-// virtualized grid that only renders cards visible in the viewport + buffer
+/**
+ * Virtualized grid: renders only viewport-visible cards plus a row buffer.
+ */
 class VirtualScrollGrid {
   #container = null;
   #content = null;
@@ -951,6 +960,9 @@ class VirtualScrollGrid {
   #scrollRAF = null;
   #mounted = false;
 
+  /**
+   * @param {{ container: HTMLElement, items: object[], bufferRows?: number, renderCard: function(object): HTMLElement, getItemId: function(object): string }} opts
+   */
   constructor({ container, items, bufferRows, renderCard, getItemId }) {
     this.#container = container;
     this.#items = items;
@@ -959,9 +971,10 @@ class VirtualScrollGrid {
     this.#getItemId = getItemId;
   }
 
+  /** @returns {HTMLDivElement|null} */
   get contentElement() { return this.#content; }
 
-  // creates the content div, measures cards, and does initial render
+  /** Append content layer, bind scroll, measure, initial visible slice. */
   mount() {
     this.#content = document.createElement('div');
     this.#content.className = 'cs-hero-box-vs__content cs-hero-box-data-manager__grid';
@@ -976,7 +989,6 @@ class VirtualScrollGrid {
     this.#renderVisible();
   }
 
-  // throttled scroll handler via rAF
   #onScrollBound = () => {
     if (this.#scrollRAF) return;
     this.#scrollRAF = requestAnimationFrame(() => {
@@ -985,7 +997,7 @@ class VirtualScrollGrid {
     });
   };
 
-  // renders a probe card offscreen to figure out card dimensions
+  /** Probe-render one card to read dimensions and cards-per-row. */
   #measure() {
     if (this.#items.length === 0) {
       this.#measured = true;
@@ -1007,7 +1019,7 @@ class VirtualScrollGrid {
     this.#measured = true;
   }
 
-  // figures out how many cards fit in a row based on container width
+  /** Derive column count from container inner width and card width. */
   #calculateCardsPerRow() {
     const containerStyle = getComputedStyle(this.#container);
     const paddingLeft = parseFloat(containerStyle.paddingLeft) || 0;
@@ -1019,7 +1031,7 @@ class VirtualScrollGrid {
     }
   }
 
-  // sets the content div height to match the total grid size for proper scrollbar
+  /** Set scrollable content height from row count. */
   #updateContentHeight() {
     const totalRows = Math.ceil(this.#items.length / this.#cardsPerRow);
     const totalHeight = totalRows > 0
@@ -1028,7 +1040,7 @@ class VirtualScrollGrid {
     this.#content.style.height = `${totalHeight}px`;
   }
 
-  // calculates the absolute x/y position for a card at a given index
+  /** @param {number} index @returns {{ x: number, y: number }} */
   #getCardPosition(index) {
     const row = Math.floor(index / this.#cardsPerRow);
     const col = index % this.#cardsPerRow;
@@ -1038,7 +1050,7 @@ class VirtualScrollGrid {
     };
   }
 
-  // the core rendering loop — adds/removes cards based on scroll position
+  /** Mount/unmount card DOM for indices in viewport ± buffer rows. */
   #renderVisible() {
     if (!this.#mounted || !this.#measured || this.#items.length === 0) return;
 
@@ -1095,7 +1107,7 @@ class VirtualScrollGrid {
     }
   }
 
-  // recalculates layout when container gets resized
+  /** Recompute columns and reposition when grid width changes. */
   handleResize() {
     if (!this.#mounted || this.#items.length === 0) return;
 
@@ -1108,7 +1120,7 @@ class VirtualScrollGrid {
     }
   }
 
-  // moves all currently rendered cards to their new positions after layout change
+  /** After column count change, move rendered cards and refresh indices. */
   #repositionAll() {
     const indexById = new Map();
     for (let i = 0; i < this.#items.length; i++) {
@@ -1132,7 +1144,7 @@ class VirtualScrollGrid {
     this.#renderVisible();
   }
 
-  // swaps the item list and re-renders, tries to keep scroll position
+  /** @param {object[]} newItems */
   updateItems(newItems) {
     const scrollTop = this.#container.scrollTop;
     this.#items = newItems;
@@ -1142,21 +1154,21 @@ class VirtualScrollGrid {
     this.#renderVisible();
   }
 
-  // runs a callback on every currently rendered card element
+  /** @param {(card: HTMLElement) => void} callback */
   updateVisibleCards(callback) {
     for (const card of this.#renderedCards.values()) {
       callback(card);
     }
   }
 
-  // removes all rendered cards from DOM
+  /** Remove every rendered card from the content layer. */
   #clearAll() {
     for (const card of this.#renderedCards.values()) card.remove();
     this.#renderedCards.clear();
     this.#renderedIndices.clear();
   }
 
-  // full teardown — cancel rAF, remove listener, clear cards
+  /** Cancel RAF, detach scroll listener, clear cards. */
   destroy() {
     if (this.#scrollRAF) {
       cancelAnimationFrame(this.#scrollRAF);

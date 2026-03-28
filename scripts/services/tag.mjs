@@ -1,3 +1,7 @@
+/**
+ * @fileoverview Tag registry: built-ins plus race/subrace/role loaded from `TAG_DATA` journal flags.
+ */
+
 import { MODULE_ID, FLAGS } from '../constants/index.mjs';
 import { TAG_CATEGORY, GENDER_TAGS, AGE_TAGS } from '../constants/tags.mjs';
 import { logger, getFlag } from '../utils/index.mjs';
@@ -14,7 +18,7 @@ const BUILTIN_TAGS = [
   { id: AGE_TAGS.OLD, category: 'builtin' },
 ];
 
-// manages the tag registry — races, subraces, roles, etc.
+/** Central tag metadata for filters, forms, and sidebar UI. */
 class TagService {
   #tags = new Map();
   #subracesByParent = new Map();
@@ -23,7 +27,7 @@ class TagService {
   #sourceLocalizationIdCache = new Map();
   #initialized = false;
 
-  // load all tags from configured sources
+  /** Register built-ins and load `TAG_DATA` from all configured sources. */
   async initialize() {
     if (this.#initialized) return;
 
@@ -42,7 +46,7 @@ class TagService {
     }
   }
 
-  // clear everything and reload from sources
+  /** Reset registry and reload from sources. */
   async reload() {
     this.#tags.clear();
     this.#subracesByParent.clear();
@@ -53,7 +57,10 @@ class TagService {
     await this.initialize();
   }
 
-  // look up a tag by id, optionally scoped to a parent race
+  /**
+   * @param {string} id
+   * @param {string|null} [parentRaceId] When resolving a subrace by id under a race.
+   */
   get(id, parentRaceId = null) {
     if (parentRaceId) {
       const subraces = this.#subracesByParent.get(parentRaceId);
@@ -62,7 +69,7 @@ class TagService {
     return this.#tags.get(id) ?? null;
   }
 
-  // get all tags including subraces
+  /** @returns {object[]} All primary tags plus subraces not duplicated in `#tags`. */
   getAll() {
     const allTags = Array.from(this.#tags.values());
 
@@ -77,16 +84,20 @@ class TagService {
     return allTags;
   }
 
-  // get tags filtered by category
+  /** @param {string} category */
   getByCategory(category) {
     return this.#tagsByCategory.get(category) ?? [];
   }
 
-  // convenience getters for common categories
+  /** @returns {object[]} */
   getRaces() {
     return this.getByCategory(TAG_CATEGORY.RACE);
   }
 
+  /**
+   * @param {string|null} [raceId] If set, subraces for that race only.
+   * @returns {object[]}
+   */
   getSubraces(raceId = null) {
     if (raceId) {
       return this.#subracesByParent.get(raceId) ?? [];
@@ -99,20 +110,24 @@ class TagService {
     return allSubraces;
   }
 
+  /** @returns {object[]} */
   getRoles() {
     return this.getByCategory(TAG_CATEGORY.ROLE);
   }
 
+  /** @returns {object[]} */
   getOther() {
     return this.getByCategory(TAG_CATEGORY.OTHER);
   }
 
+  /** @returns {object[]} Built-in gender tag records. */
   getGenders() {
     return [GENDER_TAGS.MALE, GENDER_TAGS.FEMALE]
       .map(id => this.#tags.get(id))
       .filter(Boolean);
   }
 
+  /** @returns {object[]} Built-in age tag records. */
   getAges() {
     return [
       AGE_TAGS.CHILD,
@@ -125,7 +140,10 @@ class TagService {
       .filter(Boolean);
   }
 
-  // get the localized label for a tag
+  /**
+   * @param {string} tagId
+   * @returns {string}
+   */
   getLabel(tagId) {
     const cached = this.#labelCache.get(tagId);
     if (cached !== undefined) return cached;
@@ -135,12 +153,15 @@ class TagService {
     return label;
   }
 
-  // check if a race has any subraces defined
+  /** @param {string} raceId */
   hasSubraces(raceId) {
     return (this.#subracesByParent.get(raceId)?.length ?? 0) > 0;
   }
 
-  // resolve label by source localization key, then core module key, then tag id
+  /**
+   * @param {string} tagId
+   * @returns {string}
+   */
   #resolveLabel(tagId) {
     const tagData = this.#tags.get(tagId);
     const sourceLocalizationId = this.#resolveSourceLocalizationId(tagData);
@@ -166,7 +187,11 @@ class TagService {
     return tagId;
   }
 
-  // determine source id used as i18n namespace for `${sourceId}.tags.${tagId}`
+  /**
+   * Compendium package name used as i18n namespace for pack tags.
+   * @param {object|null|undefined} tagData
+   * @returns {string|null}
+   */
   #resolveSourceLocalizationId(tagData) {
     if (!tagData) return null;
 
@@ -192,7 +217,7 @@ class TagService {
     return resolved;
   }
 
-  // pre-cache all labels for faster lookups
+  /** Fill `#labelCache` from all registered tags and subraces. */
   #buildLabelCache() {
     this.#labelCache.clear();
 
@@ -209,7 +234,7 @@ class TagService {
     }
   }
 
-  // add the hardcoded gender/age tags
+  /** Register built-in gender/age tags into `#tags` and category map. */
   #registerBuiltinTags() {
     for (const tagData of BUILTIN_TAGS) {
       this.#tags.set(tagData.id, tagData);
@@ -217,7 +242,7 @@ class TagService {
     }
   }
 
-  // load custom tags from data sources
+  /** Scan journal pages for `TAG_DATA` and populate registry. */
   async #loadFromSources() {
     const sources = source.getDataSources();
 
@@ -255,7 +280,7 @@ class TagService {
     }
   }
 
-  // register a normal tag (race, role, other)
+  /** @param {object} entry */
   #addTag(entry) {
     if (this.#tags.has(entry.id)) {
       logger.debug(`Tag "${entry.id}" already exists, skipping (priority: earlier source)`);
@@ -266,7 +291,7 @@ class TagService {
     this.#addToCategory(entry.category, entry);
   }
 
-  // register a subrace, linked to its parent race
+  /** @param {object} entry */
   #addSubrace(entry) {
     const parentId = entry.parentRaceId;
 
@@ -290,7 +315,7 @@ class TagService {
     }
   }
 
-  // helper to add a tag to its category bucket
+  /** @param {string} category */
   #addToCategory(category, tagData) {
     if (!this.#tagsByCategory.has(category)) {
       this.#tagsByCategory.set(category, []);
@@ -298,7 +323,7 @@ class TagService {
     this.#tagsByCategory.get(category).push(tagData);
   }
 
-  // count total subraces across all races
+  /** @returns {number} */
   #countSubraces() {
     let count = 0;
     for (const subraces of this.#subracesByParent.values()) {
@@ -308,4 +333,5 @@ class TagService {
   }
 }
 
+/** Singleton tag service. */
 export const tag = new TagService();

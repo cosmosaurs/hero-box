@@ -1,3 +1,7 @@
+/**
+ * @fileoverview Namespaced console logging with configurable minimum level and simple timers.
+ */
+
 import { MODULE_ID } from '../constants/index.mjs';
 
 const PREFIX = `[${MODULE_ID.toUpperCase()}]`;
@@ -11,39 +15,45 @@ const LogLevel = {
 
 let currentLevel = LogLevel.WARN;
 
-// switch the minimum log level (debug/info/warn/error)
+/**
+ * @param {'debug'|'info'|'warn'|'error'} level
+ */
 export function setLogLevel(level) {
   currentLevel = LogLevel[level.toUpperCase()] ?? LogLevel.WARN;
 }
 
+/** Module logger: debug/info/warn/error plus {@link logger.time}. */
 export const logger = {
-  // verbose stuff, only visible in dev mode
+  /** @param {...unknown} args */
   debug(...args) {
     if (currentLevel <= LogLevel.DEBUG) {
       console.debug(PREFIX, ...args);
     }
   },
 
-  // general "hey this happened" messages
+  /** @param {...unknown} args */
   info(...args) {
     if (currentLevel <= LogLevel.INFO) {
       console.log(PREFIX, ...args);
     }
   },
 
-  // something smells but we can keep going
+  /** @param {...unknown} args */
   warn(...args) {
     if (currentLevel <= LogLevel.WARN) {
       console.warn(PREFIX, ...args);
     }
   },
 
-  // something broke, always shown
+  /** @param {...unknown} args */
   error(...args) {
     console.error(PREFIX, ...args);
   },
 
-  // start a timer, call .end() to log how long it took
+  /**
+   * @param {string} label
+   * @returns {{ end: () => void }}
+   */
   time(label) {
     const start = performance.now();
     return {

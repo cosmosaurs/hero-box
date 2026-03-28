@@ -1,3 +1,7 @@
+/**
+ * @fileoverview IndexedDB key-value store for persisting the tag index between sessions.
+ */
+
 import { MODULE_ID } from '../constants/index.mjs';
 import { logger } from './logger.mjs';
 
@@ -5,12 +9,12 @@ const DB_NAME = `${MODULE_ID}-cache`;
 const DB_VERSION = 1;
 const STORE_NAME = 'index';
 
-// thin wrapper around indexeddb for caching the tag index between reloads
+/** Thin IndexedDB wrapper for tag-index persistence. */
 class IndexedDBCache {
   #db = null;
   #available = false;
 
-  // open the database, create the store if needed
+  /** @returns {Promise<boolean>} */
   async open() {
     if (this.#db) return true;
 
@@ -40,7 +44,7 @@ class IndexedDBCache {
     }
   }
 
-  // grab a value by key, returns null if missing or broken
+  /** @param {string} key */
   async get(key) {
     if (!this.#available) return null;
 
@@ -51,7 +55,7 @@ class IndexedDBCache {
     }
   }
 
-  // store a value under a key
+  /** @param {string} key */
   async set(key, value) {
     if (!this.#available) return;
 
@@ -82,7 +86,10 @@ class IndexedDBCache {
     }
   }
 
-  // run a single operation inside a transaction and return the result
+  /**
+   * @param {'readonly'|'readwrite'} mode
+   * @param {(store: IDBObjectStore) => IDBRequest} callback
+   */
   #transaction(mode, callback) {
     return new Promise((resolve, reject) => {
       const tx = this.#db.transaction(STORE_NAME, mode);
@@ -95,4 +102,5 @@ class IndexedDBCache {
   }
 }
 
+/** Singleton IndexedDB cache for the tag index service. */
 export const indexCache = new IndexedDBCache();

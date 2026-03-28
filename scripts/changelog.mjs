@@ -1,3 +1,7 @@
+/**
+ * @fileoverview On version bump, fetches changelog markdown and shows a GM-only dialog.
+ */
+
 const moduleId = 'cs-hero-box';
 
 const CHANGELOG_EN_URL = 'https://raw.githubusercontent.com/cosmosaurs/hero-box/refs/heads/main/CHANGELOG.en.md';
@@ -7,6 +11,7 @@ function isRussianLocale(lang) {
   return typeof lang === 'string' && lang.toLowerCase().startsWith('ru');
 }
 
+/** @returns {string[]} URLs/paths to try for changelog markdown. */
 function getChangelogCandidates() {
   const lang = game.i18n?.lang ?? 'en';
   const ru = isRussianLocale(lang);
@@ -24,6 +29,11 @@ function getChangelogCandidates() {
   ];
 }
 
+/**
+ * @param {string[]} paths
+ * @param {RequestInit} [options]
+ * @returns {Promise<string|null>}
+ */
 async function fetchFirstAvailable(paths, options = undefined) {
   for (const path of paths) {
     try {

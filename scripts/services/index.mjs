@@ -1,3 +1,7 @@
+/**
+ * @fileoverview Service singletons barrel (tags, index, sources, picker, names, actors, compendium).
+ */
+
 export { tag } from './tag.mjs';
 export { tagIndex } from './tag-index.mjs';
 export { source } from './source.mjs';

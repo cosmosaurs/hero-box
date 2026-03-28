@@ -1,4 +1,7 @@
-import { MODULE_ID } from '../constants/index.mjs';
+/**
+ * @fileoverview Injects create-actor dialog button, actor sheet control, token freeze, opens Actor Config.
+ */
+
 import { logger } from '../utils/index.mjs';
 import { derivePortraitUrl } from '../utils/filepicker.mjs';
 import { getCreateDialogHookName } from '../utils/system.mjs';
@@ -6,7 +9,7 @@ import { actor } from '../services/actor.mjs';
 
 let ActorConfigClass = null;
 
-// lazy load the actor config to avoid circular imports
+/** Lazy-load and cache the `ActorConfig` application class. */
 async function getActorConfig() {
   if (!ActorConfigClass) {
     const mod = await import('../applications/actor-config/actor-config.mjs');
@@ -15,7 +18,7 @@ async function getActorConfig() {
   return ActorConfigClass;
 }
 
-// hook into various ui elements to add our buttons
+/** Register create-dialog, actor-sheet, and token-config hooks. */
 export function registerUIHooks() {
   logger.debug('Registering UI hooks');
 
@@ -26,14 +29,14 @@ export function registerUIHooks() {
   Hooks.on('renderTokenConfig', handleRenderTokenConfig);
 }
 
-// get the localized title of the create actor dialog so we can identify it
+/** @returns {string} Localized native create-actor dialog title. */
 function getCreateActorDialogTitle() {
   return game.i18n.format('DOCUMENT.Create', {
     type: game.i18n.localize('DOCUMENT.Actor')
   });
 }
 
-// inject our "generate random" button into the create actor dialog
+/** @param {Application} app @param {JQuery} html */
 function handleCreateActorDialog(app, html) {
   if (app.options?.window?.title !== getCreateActorDialogTitle()) return;
 
@@ -56,7 +59,7 @@ function handleCreateActorDialog(app, html) {
   });
 }
 
-// add our dice button to the actor sheet header
+/** @param {ActorSheet} app @param {object[]} controls */
 function handleActorSheetHeaderControls(app, controls) {
   if (controls.some(btn => btn.class === 'cs-hero-box')) return;
 
@@ -70,7 +73,7 @@ function handleActorSheetHeaderControls(app, controls) {
   });
 }
 
-// add the "freeze token" button to the token config dialog
+/** @param {TokenConfig} app @param {JQuery} html */
 function handleRenderTokenConfig(app, html, data) {
   const token = app.token;
   if (!token?.actor) return;
@@ -104,7 +107,10 @@ function handleRenderTokenConfig(app, html, data) {
   });
 }
 
-// create a real linked actor from an unlinked token, preserving its rolled appearance
+/**
+ * Create a new linked `Actor` from the token’s current document state.
+ * @param {TokenDocument} token
+ */
 async function freezeTokenAsActor(token) {
   try {
     const actorData = foundry.utils.duplicate(token.actor.system);
@@ -134,7 +140,11 @@ async function freezeTokenAsActor(token) {
   }
 }
 
-// open our config dialog and create/update the actor if submitted
+/**
+ * Open Actor Config; on submit calls `actor.createOrUpdate`.
+ * @param {Actor|null} [existingActor]
+ * @param {string|null} [folderId]
+ */
 async function openActorConfig(existingActor = null, folderId = null) {
   const Config = await getActorConfig();
 

@@ -1,3 +1,7 @@
+/**
+ * @fileoverview Game system–specific defaults (actor type, create-dialog hook name).
+ */
+
 const SYSTEM_ACTOR_TYPES = Object.freeze({
   'dnd5e': 'npc',
   'pf2e': 'npc',
@@ -7,12 +11,14 @@ const SYSTEM_ACTOR_TYPES = Object.freeze({
   'coc7': 'npc',
 });
 
-// pick the right actor type for the current game system
+/** @returns {string} */
 export function getDefaultActorType() {
   return SYSTEM_ACTOR_TYPES[game.system.id] ?? 'npc';
 }
 
-// what quirks does the current system have
+/**
+ * @returns {{ hasCustomCreateDialog: boolean, id: string }}
+ */
 export function getSystemCapabilities() {
   const systemId = game.system.id;
 
@@ -22,7 +28,7 @@ export function getSystemCapabilities() {
   };
 }
 
-// dnd5e uses a different dialog hook than everyone else
+/** @returns {string} Foundry hook name for the native create-actor dialog. */
 export function getCreateDialogHookName() {
   return game.system.id === 'dnd5e'
     ? 'renderCreateDocumentDialog'

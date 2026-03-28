@@ -1,5 +1,7 @@
-// creates a promise that can only be resolved once,
-// prevents the double-resolve bug in app open/close flows
+/**
+ * @fileoverview Promise pair for dialog flows: resolve at most once (avoids double-resolve on close).
+ * @returns {{ promise: Promise<unknown>, resolve: (value?: unknown) => void }}
+ */
 export function createSingleResolvePromise() {
   let resolved = false;
   let resolveFn;

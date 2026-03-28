@@ -1,8 +1,15 @@
+/**
+ * @fileoverview Sidebar category trees and filter toggle handling for data manager UIs.
+ */
+
 import { TAG_CATEGORY, GENDER_TAGS, AGE_TAGS } from '../constants/tags.mjs';
 import { tag } from '../services/tag.mjs';
 
-// build the sidebar category structure for the data manager / picker
-// handles gender, age, race, subrace, role groups with counts and active states
+/**
+ * Build nested sidebar categories (gender, age, race, subrace, role, optional type/category filters).
+ * @param {Record<string, unknown>} [options]
+ * @returns {Record<string, unknown>}
+ */
 export function buildSidebarCategories(options = {}) {
   const {
     tagCounts = new Map(),
@@ -152,7 +159,13 @@ export function buildSidebarCategories(options = {}) {
   return categories;
 }
 
-// toggle a tag/type/category filter in the sidebar and clean up related subraces
+/**
+ * @param {{ tags: string[], types: string[], categories: string[] }} filters
+ * @param {string} tagId
+ * @param {{ get: (id: string) => { category?: string }|null|undefined }} tagService
+ * @param {boolean} [isTypeFilter]
+ * @param {boolean} [isCategoryFilter]
+ */
 export function handleTagToggle(filters, tagId, tagService, isTypeFilter = false, isCategoryFilter = false) {
   if (isTypeFilter) {
     const idx = filters.types.indexOf(tagId);

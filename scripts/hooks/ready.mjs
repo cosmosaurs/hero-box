@@ -1,13 +1,14 @@
-import { MODULE_ID, SETTINGS } from '../constants/index.mjs';
+/**
+ * @fileoverview `ready` hook: compendium visibility, then source/tag/index/name services in order.
+ */
+
 import { logger } from '../utils/index.mjs';
-import { getSetting, setSetting } from '../settings.mjs';
 import { tagIndex } from '../services/tag-index.mjs';
 import { nameGenerator } from '../services/name-generator.mjs';
 import { tag } from '../services/tag.mjs';
 import { source } from '../services/source.mjs';
 import { updateCompendiumVisibility } from '../services/compendium.mjs';
 
-// kick off all the async initialization once the world is ready
 export function registerReadyHooks() {
   Hooks.once('ready', async () => {
     logger.info('World ready, starting services...');
@@ -19,7 +20,7 @@ export function registerReadyHooks() {
   });
 }
 
-// spin up all services in the right order
+/** Start `source`, `tag`, `tagIndex`, and `nameGenerator` after world ready. */
 async function initializeServices() {
   const timer = logger.time('Services initialization');
 

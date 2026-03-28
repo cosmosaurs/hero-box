@@ -1,7 +1,10 @@
+/**
+ * @fileoverview Client keybinding to open the Data Manager.
+ */
+
 import { MODULE_ID } from '../constants/index.mjs';
 import { logger } from '../utils/index.mjs';
 
-// register our keyboard shortcuts
 export function registerKeybindings() {
   game.keybindings.register(MODULE_ID, 'openDataManager', {
     name: 'cs-hero-box.keybindings.openDataManager.name',
@@ -15,7 +18,7 @@ export function registerKeybindings() {
   logger.debug('Keybindings registered');
 }
 
-// open data manager or bring it to front if already open
+/** Open or focus the Data Manager window. */
 async function openDataManager() {
   const { DataManager } = await import('../applications/data-manager/data-manager.mjs');
   const targetId = `${MODULE_ID}-data-manager`;

@@ -1,10 +1,14 @@
+/**
+ * @fileoverview Data Manager "Tags" tab: list/filter custom tags and open editor.
+ */
+
 import { TAG_CATEGORY, isBuiltinTag } from '../../constants/tags.mjs';
 import { logger } from '../../utils/index.mjs';
 import { buildSidebarCategories, handleTagToggle } from '../../utils/sidebar.mjs';
 import { tag, source } from '../../services/index.mjs';
 import { sortByLabel } from '../../utils/sort.mjs';
 
-// handles the tags management tab — listing, filtering, crud for custom tags
+/** Tab logic for tag definitions; `app` is the parent DataManager. */
 export class TagsTab {
   #app = null;
   #filters = { tags: [], search: '', categories: [] };
@@ -14,20 +18,23 @@ export class TagsTab {
   #filteredCache = null;
   #lastFilterKey = '';
 
+  /** @param {import('./data-manager.mjs').DataManager} app */
   constructor(app) {
     this.#app = app;
   }
 
+  /** @returns {string} */
   get searchQuery() { return this.#filters.search; }
+  /** @returns {boolean} */
   get hasFilters() { return this.#filters.tags.length > 0 || this.#filters.search.length > 0 || this.#filters.categories.length > 0; }
 
-  // updates search text and clears filtered cache
+  /** @param {string} query */
   setSearchQuery(query) {
     this.#filters.search = query;
     this.#filteredCache = null;
   }
 
-  // wipes all filter state clean
+  /** Clears filters and internal caches. */
   reset() {
     this.#filters = { tags: [], search: '', categories: [] };
     this.#allTagsCache = null;
@@ -36,7 +43,7 @@ export class TagsTab {
     this.#lastFilterKey = '';
   }
 
-  // forces all caches to rebuild next time
+  /** Marks tag list caches stale so they rebuild on next access. */
   invalidateCache() {
     this.#allTagsCache = null;
     this.#tagCountsCache = null;
@@ -44,7 +51,7 @@ export class TagsTab {
     this.#lastFilterKey = '';
   }
 
-  // builds the full render context for the tags tab
+  /** @returns {Promise<object>} */
   async prepareContext() {
     const allTags = this.#getAllTags();
     const tagCounts = this.#getTagCounts(allTags);
@@ -70,14 +77,14 @@ export class TagsTab {
     };
   }
 
-  // grabs all custom (non-builtin) tags, cached
+  /** @returns {object[]} */
   #getAllTags() {
     if (this.#allTagsCache) return this.#allTagsCache;
     this.#allTagsCache = tag.getAll().filter(t => !isBuiltinTag(t.id));
     return this.#allTagsCache;
   }
 
-  // counts tags per category for sidebar badges
+  /** @param {object[]} allTags @returns {Map<string, number>} */
   #getTagCounts(allTags) {
     if (this.#tagCountsCache) return this.#tagCountsCache;
 
@@ -91,7 +98,7 @@ export class TagsTab {
     return counts;
   }
 
-  // applies category, race, and search filters to the tag list
+  /** @param {object[]} allTags @returns {object[]} */
   #getFilteredTags(allTags) {
     const filterKey = `${this.#filters.categories.join(',')}|${this.#filters.tags.join(',')}|${this.#filters.search}`;
     if (filterKey === this.#lastFilterKey && this.#filteredCache) {
@@ -133,12 +140,12 @@ export class TagsTab {
     return result;
   }
 
-  // post-render — restores collapsed groups
+  /** Restores collapsed sidebar groups after template render. */
   onRender() {
     this.#restoreCollapsedGroups();
   }
 
-  // opens the editor for creating a new custom tag
+  /** @returns {Promise<void>} */
   async onAddTag() {
     if (!this.#app.selectedJournalId) {
       ui.notifications.warn(game.i18n.localize('cs-hero-box.dataManager.selectJournalFirst'));
@@ -152,7 +159,7 @@ export class TagsTab {
     }
   }
 
-  // opens the editor for an existing tag
+  /** @returns {Promise<void>} */
   async onEditTag(event, target) {
     const uuid = target.closest('[data-uuid]').dataset.uuid;
     try {
@@ -170,7 +177,7 @@ export class TagsTab {
     }
   }
 
-  // deletes a custom tag after user confirmation
+  /** @returns {Promise<void>} */
   async onDeleteTag(event, target) {
     const uuid = target.closest('[data-uuid]').dataset.uuid;
 
@@ -196,7 +203,7 @@ export class TagsTab {
     }
   }
 
-  // toggles a tag or category filter in the sidebar
+  /** Sidebar tag/category filter toggle. */
   onToggleTag(event, target) {
     const tagId = target.dataset.tag;
     const isCategoryFilter = target.dataset.categoryFilter === 'true';
@@ -206,7 +213,7 @@ export class TagsTab {
     this.#app.render();
   }
 
-  // collapses/expands a sidebar tag group
+  /** Collapse/expand a category group in the sidebar. */
   onToggleTagGroup(event, target) {
     const group = target.closest('.cs-hero-box-data-manager__tag-group');
     if (group) {
@@ -221,7 +228,7 @@ export class TagsTab {
     }
   }
 
-  // restores collapsed groups after re-render, disabling transition to avoid flash
+  /** Reapply `.collapsed` without transition flash after render. */
   #restoreCollapsedGroups() {
     for (const category of this.#collapsedGroups) {
       const group = this.#app.querySelector(`.cs-hero-box-data-manager__tag-group[data-category="${category}"]`);
@@ -234,7 +241,7 @@ export class TagsTab {
     }
   }
 
-  // organizes tags into a display-friendly list: races with their subraces, then the rest
+  /** @param {object[]} filteredTags @returns {object[]} */
   #groupTagsForDisplay(filteredTags) {
     const raceTags = filteredTags.filter(t => t.category === TAG_CATEGORY.RACE);
     const subraceTags = filteredTags.filter(t => t.category === TAG_CATEGORY.SUBRACE);

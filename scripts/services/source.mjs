@@ -1,15 +1,18 @@
+/**
+ * @fileoverview World setting for enabled journal/compendium data sources; auto-discovery and CRUD.
+ */
+
 import { MODULE_ID, FLAGS, SETTINGS, PACKS } from '../constants/index.mjs';
 import { logger } from '../utils/index.mjs';
 import { parseSourceId, SOURCE_TYPE, journalHasModuleData } from '../utils/source.mjs';
 
-// manages the list of data sources (compendiums and journals) the module pulls from
 class SourceService {
   #sourcesCache = null;
   #writableJournalsCache = null;
   #sourceNameCache = new Map();
   #initialized = false;
 
-  // run one-time setup — migrate old settings format and scan for new journals
+  /** Migrate legacy settings, auto-discover journals with module data. */
   async initialize() {
     if (this.#initialized) return;
 
@@ -19,23 +22,26 @@ class SourceService {
     this.#initialized = true;
   }
 
-  // alias for getEnabledSources
+  /** @returns {string[]} Alias of `getEnabledSources()`. */
   getDataSources() {
     return this.getEnabledSources();
   }
 
-  // get just the source ids that are currently enabled
+  /** @returns {string[]} Enabled source ids in priority order. */
   getEnabledSources() {
     const sources = this.#getSources();
     return sources.filter(s => s.enabled).map(s => s.id);
   }
 
-  // get all sources including disabled ones
+  /** @returns {{ id: string, enabled: boolean }[]} */
   getAllSources() {
     return this.#getSources();
   }
 
-  // look up the display name for a source id
+  /**
+   * @param {string} sourceId
+   * @returns {string} Display name for UI.
+   */
   getSourceName(sourceId) {
     if (!sourceId) return '';
 
@@ -57,7 +63,9 @@ class SourceService {
     return name;
   }
 
-  // get list of journals we can write to (for the journal dropdown in data manager)
+  /**
+   * @returns {{ id: string, name: string, isCompendium: boolean }[]}
+   */
   getWritableJournals() {
     if (this.#writableJournalsCache) return this.#writableJournalsCache;
 
@@ -92,7 +100,12 @@ class SourceService {
     return journals;
   }
 
-  // add extra display info to a source for rendering in the settings ui
+  /**
+   * @param {{ id: string, enabled: boolean }} sourceData
+   * @param {number} index
+   * @param {number} total
+   * @returns {object} Enriched row for templates.
+   */
   enrichSourceData(sourceData, index, total) {
     const parsed = parseSourceId(sourceData.id);
 
@@ -139,7 +152,11 @@ class SourceService {
     return data;
   }
 
-  // add a new source to the list
+  /**
+   * @param {string} sourceId
+   * @param {boolean} [enabled]
+   * @returns {Promise<boolean>} False if already present.
+   */
   async addSource(sourceId, enabled = true) {
     const sources = this.#getSources();
 
@@ -155,7 +172,7 @@ class SourceService {
     return true;
   }
 
-  // unlock a compendium if it's locked so we can write to it
+  /** @param {string} sourceId */
   async #unlockSourceIfNeeded(sourceId) {
     const parsed = parseSourceId(sourceId);
 
@@ -172,7 +189,7 @@ class SourceService {
     }
   }
 
-  // remove a source from the list
+  /** @returns {Promise<boolean>} Whether a row was removed. */
   async removeSource(sourceId) {
     const sources = this.#getSources();
     const filtered = sources.filter(s => s.id !== sourceId);
@@ -184,7 +201,7 @@ class SourceService {
     return false;
   }
 
-  // toggle a source on or off
+  /** @returns {Promise<boolean>} Whether the id existed. */
   async setSourceEnabled(sourceId, enabled) {
     const sources = this.#getSources();
     const sourceItem = sources.find(s => s.id === sourceId);
@@ -197,7 +214,11 @@ class SourceService {
     return false;
   }
 
-  // change the priority order of a source
+  /**
+   * @param {string} sourceId
+   * @param {'up'|'down'} direction
+   * @returns {Promise<boolean>}
+   */
   async moveSource(sourceId, direction) {
     const sources = this.#getSources();
     const index = sources.findIndex(s => s.id === sourceId);
@@ -215,14 +236,14 @@ class SourceService {
     return true;
   }
 
-  // force refresh of cached data
+  /** Drop in-memory source and name caches (after settings change). */
   invalidateCache() {
     this.#sourcesCache = null;
     this.#writableJournalsCache = null;
     this.#sourceNameCache.clear();
   }
 
-  // convert old string[] format to new {id, enabled}[] format
+  /** Migrate legacy `DATA_SOURCES` string[] to `{ id, enabled }[]`. */
   async #migrateOldFormat() {
     try {
       const raw = game.settings.get(MODULE_ID, SETTINGS.DATA_SOURCES);
@@ -237,7 +258,7 @@ class SourceService {
     }
   }
 
-  // scan world journals and compendiums for any that have our flags
+  /** GM-only: append journals/packs that contain module flags to settings. */
   async #autoDiscoverJournals() {
     if (!game.user.isGM) return;
 
@@ -286,7 +307,7 @@ class SourceService {
     }
   }
 
-  // check if any journal in a compendium has our flags
+  /** @param {CompendiumCollection} pack */
   async #compendiumHasModuleData(pack) {
     try {
       const journals = await pack.getDocuments();
@@ -303,7 +324,7 @@ class SourceService {
     return false;
   }
 
-  // get the raw source list from settings, with caching
+  /** @returns {{ id: string, enabled: boolean }[]} */
   #getSources() {
     if (this.#sourcesCache !== null) {
       return this.#sourcesCache;
@@ -328,7 +349,7 @@ class SourceService {
     return this.#sourcesCache;
   }
 
-  // persist the source list to settings and clear caches
+  /** @param {{ id: string, enabled: boolean }[]} sources */
   async #saveSources(sources) {
     this.#sourcesCache = sources;
     this.#writableJournalsCache = null;
@@ -337,4 +358,5 @@ class SourceService {
   }
 }
 
+/** Singleton data-source configuration service. */
 export const source = new SourceService();

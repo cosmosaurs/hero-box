@@ -1,3 +1,7 @@
+/**
+ * @fileoverview Filename tag parsing, FilePicker wrappers, and portrait URL helpers.
+ */
+
 import { GENDER_TAGS, AGE_TAGS } from '../constants/tags.mjs';
 
 const BUILTIN_SHORT_TAGS = new Set([
@@ -8,7 +12,11 @@ const BUILTIN_SHORT_TAGS = new Set([
   AGE_TAGS.OLD,
 ]);
 
-// try to extract tags from a filename like "human.m.a.webp" → ["human", "m", "a"]
+/**
+ * @param {string} fileName
+ * @param {string[]|null} [knownTagIds]
+ * @returns {string[]}
+ */
 export function parseTagsFromFileName(fileName, knownTagIds = null) {
   const baseName = fileName.replace(/\.\w+$/, '').toLowerCase();
 
@@ -34,17 +42,19 @@ export function parseTagsFromFileName(fileName, knownTagIds = null) {
   return [...new Set(detectedTags)];
 }
 
-// escape special regex chars so user input doesn't break things
+/** @param {string} string */
 function escapeRegex(string) {
   return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
-// get the right filepicker class depending on foundry version
 function getFilePicker() {
   return foundry.applications.apps.FilePicker.implementation ?? FilePicker;
 }
 
-// open the foundry file picker for a single image
+/**
+ * @param {string} current
+ * @param {(path: string) => void} callback
+ */
 export function browseImage(current, callback) {
   const Picker = getFilePicker();
   new Picker({
@@ -54,7 +64,10 @@ export function browseImage(current, callback) {
   }).render(true);
 }
 
-// open the foundry file picker for a folder
+/**
+ * @param {string} current
+ * @param {(path: string) => void} callback
+ */
 export function browseFolder(current, callback) {
   const Picker = getFilePicker();
   new Picker({
@@ -64,7 +77,10 @@ export function browseFolder(current, callback) {
   }).render(true);
 }
 
-// list all image files in a folder (webp, png, jpg, etc.)
+/**
+ * @param {string} folderPath
+ * @returns {Promise<string[]>}
+ */
 export async function scanFolderForImages(folderPath) {
   const imageExtensions = ['webp', 'png', 'jpg', 'jpeg', 'gif', 'svg'];
   const Picker = getFilePicker();
@@ -80,7 +96,10 @@ export async function scanFolderForImages(folderPath) {
   }
 }
 
-// guess the portrait path from a token path by swapping /token/ → /portrait/
+/**
+ * @param {string} tokenUrl
+ * @returns {string}
+ */
 export function derivePortraitUrl(tokenUrl) {
   if (!tokenUrl) return '';
   if (tokenUrl.includes('/token/')) {
@@ -89,7 +108,7 @@ export function derivePortraitUrl(tokenUrl) {
   return tokenUrl;
 }
 
-// grab just the filename from a full path
+/** @param {string} filePath */
 export function getFileNameFromPath(filePath) {
   return filePath.split('/').pop();
 }

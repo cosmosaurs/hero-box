@@ -1,10 +1,14 @@
-import { MODULE_ID, SETTINGS, PACKS } from './constants/index.mjs';
+/**
+ * @fileoverview `game.settings` registration, getters/setters, and Data Manager menu stub.
+ */
+
+import { MODULE_ID, SETTINGS } from './constants/index.mjs';
 import { setLogLevel, logger } from './utils/index.mjs';
 
 let compendiumModule = null;
 let tagIndexModule = null;
 
-// lazy load compendium module to avoid circular deps
+/** Lazy-load `./services/compendium.mjs` (circular import avoidance). */
 async function getCompendiumModule() {
   if (!compendiumModule) {
     compendiumModule = await import('./services/compendium.mjs');
@@ -12,7 +16,7 @@ async function getCompendiumModule() {
   return compendiumModule;
 }
 
-// lazy load tag index module
+/** Lazy-load tag index service module. */
 async function getTagIndexModule() {
   if (!tagIndexModule) {
     tagIndexModule = await import('./services/tag-index.mjs');
@@ -20,7 +24,6 @@ async function getTagIndexModule() {
   return tagIndexModule.tagIndex;
 }
 
-// register all module settings with foundry
 export function registerSettings() {
   // toggle verbose console logging and show hidden compendiums
   game.settings.register(MODULE_ID, SETTINGS.DEVELOPER_MODE, {
@@ -76,17 +79,17 @@ export function registerSettings() {
   logger.debug('Settings registered');
 }
 
-// read a setting value
+/** @param {string} key */
 export function getSetting(key) {
   return game.settings.get(MODULE_ID, key);
 }
 
-// write a setting value
+/** @param {string} key @param {unknown} value */
 export function setSetting(key, value) {
   return game.settings.set(MODULE_ID, key, value);
 }
 
-// check if we're in dev mode (with fallback for early calls before settings exist)
+/** @returns {boolean} */
 export function isDeveloperMode() {
   try {
     return getSetting(SETTINGS.DEVELOPER_MODE);
@@ -95,7 +98,7 @@ export function isDeveloperMode() {
   }
 }
 
-// fake form application that just opens the data manager when clicked
+/** Settings menu entry that opens the Data Manager application. */
 class DataManagerMenuButton extends FormApplication {
   async render() {
     const { DataManager } = await import('./applications/data-manager/data-manager.mjs');

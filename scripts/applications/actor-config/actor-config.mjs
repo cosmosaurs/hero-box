@@ -1,10 +1,13 @@
+/**
+ * @fileoverview Hero Box actor wizard: random vs fixed token, tag or explicit image selection.
+ */
+
 import { MODULE_ID, FLAGS, TOKEN_MODE, SELECTION_MODE, PATHS } from '../../constants/index.mjs';
 import { GENDER_TAGS, AGE_TAGS } from '../../constants/tags.mjs';
 import { logger, getFlag } from '../../utils/index.mjs';
 import { tag, imagePicker } from '../../services/index.mjs';
 import { BaseFormApplication } from '../base/base.mjs';
 
-// the main dialog for creating/editing random actors
 export class ActorConfig extends BaseFormApplication {
   static DEFAULT_OPTIONS = {
     id: `${MODULE_ID}-actor-config`,
@@ -54,6 +57,7 @@ export class ActorConfig extends BaseFormApplication {
   #selectedImages = [];
   #initPromise = null;
 
+  /** @param {Actor|null} [actor] */
   constructor(actor = null) {
     super();
     this.#actor = actor;
@@ -62,7 +66,11 @@ export class ActorConfig extends BaseFormApplication {
     this.#initPromise = this.#initializeFromActor();
   }
 
-  // open the dialog and return a promise with the result
+  /**
+   * @param {Actor|null} [actor]
+   * @param {{ folderId?: string|null, initialSelectionMode?: string, initialImages?: object[] }} [options]
+   * @returns {Promise<{ submitted: boolean, data: object|null }>}
+   */
   static async open(actor = null, options = {}) {
     const { createSingleResolvePromise } = await import('../../utils/promise.mjs');
     const { promise, resolve } = createSingleResolvePromise();
@@ -94,6 +102,7 @@ export class ActorConfig extends BaseFormApplication {
     return promise;
   }
 
+  /** @returns {string} */
   get title() {
     if (this.#actor) {
       return game.i18n.format('cs-hero-box.form.titleEdit', { name: this.#actor.name });
@@ -101,7 +110,7 @@ export class ActorConfig extends BaseFormApplication {
     return game.i18n.localize('cs-hero-box.form.title');
   }
 
-  // reset state when closing
+  /** @returns {Promise<void>} */
   async close(options = {}) {
     this.#formState = this.#getInitialFormState();
     this.#selectionMode = SELECTION_MODE.TAG;
@@ -109,6 +118,7 @@ export class ActorConfig extends BaseFormApplication {
     return super.close(options);
   }
 
+  /** @param {object} context @param {object} options */
   _onRender(context, options) {
     super._onRender(context, options);
     this.#dragDrop.forEach(d => d.bind(this.element));
@@ -116,7 +126,7 @@ export class ActorConfig extends BaseFormApplication {
     this.#bindDropZoneEvents();
   }
 
-  // add visual feedback for drag and drop
+  /** CSS `dragover` class on the source-actor drop zone. */
   #bindDropZoneEvents() {
     const dropZone = this.querySelector('[data-drop-zone]');
     if (!dropZone) return;
@@ -145,8 +155,8 @@ export class ActorConfig extends BaseFormApplication {
     });
   }
 
+  /** @returns {Promise<object>} */
   async _prepareContext(options) {
-    // wait for actor data to load if editing
     if (this.#initPromise) {
       await this.#initPromise;
       this.#initPromise = null;
@@ -155,7 +165,6 @@ export class ActorConfig extends BaseFormApplication {
     this.#loadTagsIfNeeded();
     const state = this.#formState;
 
-    // build race tags with nested subraces
     const raceTags = this.#raceTags.map(t => {
       const isSelected = state.race.includes(t.id);
       const subraces = tag.getSubraces(t.id);
@@ -217,12 +226,12 @@ export class ActorConfig extends BaseFormApplication {
     };
   }
 
-  // sync form state when user interacts with checkboxes
+  /** Persist checkbox/radio state from DOM (form submit path). */
   _onFormSubmit(event, form, formData) {
     this.#syncFormState();
   }
 
-  // user clicked the generate button — pack up the data and close
+  /** Submit wizard: set `#result` and close. */
   _onGenerate() {
     this.#syncFormState();
     this.#result = {
@@ -232,12 +241,13 @@ export class ActorConfig extends BaseFormApplication {
     this.close();
   }
 
+  /** Clear linked source actor from form state. */
   _onClearSourceActor() {
     this.#formState.sourceActor = null;
     this.render();
   }
 
-  // open the image picker dialog
+  /** @returns {Promise<void>} */
   async _onPickImages() {
     const { DataManager } = await import('../data-manager/data-manager.mjs');
 
@@ -265,17 +275,20 @@ export class ActorConfig extends BaseFormApplication {
     this.render();
   }
 
+  /** Remove all picked images from image-selection mode. */
   _onClearImages() {
     this.#selectedImages = [];
     this.render();
   }
 
+  /** Remove one image from `#selectedImages` by page uuid. */
   _onRemoveImage(event, target) {
     const uuid = target.dataset.uuid;
     this.#selectedImages = this.#selectedImages.filter(img => img.uuid !== uuid);
     this.render();
   }
 
+  /** Switch between tag-based and explicit-image selection. */
   _onSetSelectionMode(event, target) {
     const mode = target.dataset.mode;
     if (mode && mode !== this.#selectionMode) {
@@ -284,7 +297,7 @@ export class ActorConfig extends BaseFormApplication {
     }
   }
 
-  // load existing criteria if editing an actor
+  /** @returns {Promise<void>} */
   async #initializeFromActor() {
     if (!this.#actor) return;
 
@@ -312,7 +325,7 @@ export class ActorConfig extends BaseFormApplication {
     }
   }
 
-  // show/hide subraces when race checkboxes change
+  /** Re-render on race checkbox change so subrace rows update. */
   #bindRaceCheckboxes() {
     const raceCheckboxes = this.querySelectorAll('input[data-race-id]');
 
@@ -335,7 +348,6 @@ export class ActorConfig extends BaseFormApplication {
       }
     }
 
-    // only keep subraces for selected races
     const validSubraces = new Set();
     for (const raceId of this.#formState.race) {
       tag.getSubraces(raceId).forEach(s => validSubraces.add(s.id));
@@ -383,7 +395,11 @@ export class ActorConfig extends BaseFormApplication {
     }
   }
 
-  // convert tag constants to checkbox template data
+  /**
+   * @param {string} name
+   * @param {Record<string, string>} values
+   * @param {string[]} selectedValues
+   */
   #buildCheckboxOptions(name, values, selectedValues) {
     return Object.entries(values).map(([key, id]) => ({
       id,
@@ -392,7 +408,7 @@ export class ActorConfig extends BaseFormApplication {
     }));
   }
 
-  // lazy load tags on first render
+  /** Populate `#raceTags` and `#roleTags` once. */
   #loadTagsIfNeeded() {
     if (!this.#raceTags.length) {
       this.#raceTags = tag.getRaces();
@@ -400,7 +416,10 @@ export class ActorConfig extends BaseFormApplication {
     }
   }
 
-  // get initial form state, loading from actor if editing
+  /**
+   * @param {boolean} [reset]
+   * @returns {object}
+   */
   #getInitialFormState(reset = false) {
     if (this.#actor && !reset) {
       const saved = getFlag(this.#actor, FLAGS.PREV_FORM_VALUES);
@@ -418,7 +437,7 @@ export class ActorConfig extends BaseFormApplication {
     };
   }
 
-  // ensure all expected fields exist
+  /** @param {object} saved @returns {object} */
   #normalizeFormState(saved) {
     return {
       race: saved.race ?? [],
@@ -431,7 +450,7 @@ export class ActorConfig extends BaseFormApplication {
     };
   }
 
-  // pack up the form state for the actor service
+  /** Payload for `actor.createOrUpdate` / token criteria flags. */
   #buildOutput() {
     const isImageMode = this.#selectionMode === SELECTION_MODE.IMAGE;
 
@@ -448,7 +467,7 @@ export class ActorConfig extends BaseFormApplication {
     };
   }
 
-  // set up drag and drop handlers for the source actor drop zone
+  /** @returns {DragDrop[]} */
   #createDragDropHandlers() {
     return this.options.dragDrop.map(config => {
       return new DragDrop({
@@ -462,6 +481,7 @@ export class ActorConfig extends BaseFormApplication {
     });
   }
 
+  /** @param {DragEvent} event */
   #onDragOver(event) {
     const dropZone = event.target.closest('[data-drop-zone]');
     if (dropZone) {
@@ -469,7 +489,7 @@ export class ActorConfig extends BaseFormApplication {
     }
   }
 
-  // handle dropping an actor onto the source actor zone
+  /** @param {DragEvent} event @returns {Promise<void>} */
   async #onDropActor(event) {
     event.preventDefault();
 

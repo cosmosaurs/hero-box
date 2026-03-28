@@ -1,9 +1,12 @@
+/**
+ * @fileoverview Configure enabled journal/compendium sources and trigger reindex + name reload.
+ */
+
 import { MODULE_ID, FLAGS, PATHS } from '../../constants/index.mjs';
 import { journalHasModuleData } from '../../utils/source.mjs';
 import { tagIndex, tag, source, nameGenerator } from '../../services/index.mjs';
 import { BaseFormApplication } from '../base/base.mjs';
 
-// settings dialog for managing which journals/compendiums the module pulls data from
 export class DataSources extends BaseFormApplication {
   static DEFAULT_OPTIONS = {
     id: `${MODULE_ID}-data-sources`,
@@ -47,6 +50,7 @@ export class DataSources extends BaseFormApplication {
     return game.i18n.localize('cs-hero-box.dataSources.title');
   }
 
+  /** @returns {object} */
   _prepareContext(options) {
     const allSources = source.getAllSources();
     const total = allSources.length;
@@ -59,7 +63,10 @@ export class DataSources extends BaseFormApplication {
     };
   }
 
-  // save and reload all services if sources changed
+  /**
+   * Close dialog; optionally reload tag index, tags, names, and refresh Data Manager.
+   * @returns {Promise<boolean>}
+   */
   async _onFormSubmit(event, form, formData) {
     const submitBtn = this.querySelector('button[type="submit"]');
     if (submitBtn) submitBtn.disabled = true;
@@ -85,7 +92,7 @@ export class DataSources extends BaseFormApplication {
     return false;
   }
 
-  // open dialog to pick a new source to add
+  /** @returns {Promise<void>} */
   async _onAddSource() {
     const sourceId = await this.#selectSource();
     if (sourceId) {
@@ -97,6 +104,7 @@ export class DataSources extends BaseFormApplication {
     }
   }
 
+  /** @returns {Promise<void>} */
   async _onRemoveSource(event, target) {
     const sourceId = target.dataset.sourceId;
     await source.removeSource(sourceId);
@@ -104,6 +112,7 @@ export class DataSources extends BaseFormApplication {
     this.render();
   }
 
+  /** @returns {Promise<void>} */
   async _onToggleSource(event, target) {
     const sourceId = target.dataset.sourceId;
     const enabled = target.checked;
@@ -112,6 +121,7 @@ export class DataSources extends BaseFormApplication {
     this.render();
   }
 
+  /** @returns {Promise<void>} */
   async _onMoveSource(event, target) {
     const sourceId = target.dataset.sourceId;
     const direction = target.dataset.direction;
@@ -122,7 +132,7 @@ export class DataSources extends BaseFormApplication {
     }
   }
 
-  // create a fresh world journal to store data in
+  /** @returns {Promise<void>} */
   async _onCreateWorldJournal() {
     const result = await foundry.applications.api.DialogV2.prompt({
       window: { title: game.i18n.localize('cs-hero-box.dataSources.createJournal.title') },
@@ -152,7 +162,7 @@ export class DataSources extends BaseFormApplication {
     this.render();
   }
 
-  // scan world for journals that have our flags and auto-add them
+  /** @returns {Promise<void>} */
   async _onScanJournals() {
     let found = 0;
     const allSources = source.getAllSources();
@@ -197,7 +207,7 @@ export class DataSources extends BaseFormApplication {
     }
   }
 
-  // check if any journal in a compendium has our module flags
+  /** @param {*} pack Journal compendium pack. @returns {Promise<boolean>} */
   async #compendiumHasModuleData(pack) {
     try {
       const journals = await pack.getDocuments();
@@ -212,7 +222,7 @@ export class DataSources extends BaseFormApplication {
     return false;
   }
 
-  // tell the data manager to refresh if it's open
+  /** Re-render open Data Manager and invalidate tab caches. */
   #refreshDataManager() {
     const targetId = `${MODULE_ID}-data-manager`;
     let openApp = null;
@@ -235,7 +245,7 @@ export class DataSources extends BaseFormApplication {
     }
   }
 
-  // get compendiums that aren't already in our sources
+  /** @returns {{ id: string, name: string, packageType: string, packageName: string }[]} */
   #getAvailableCompendiums() {
     const allSources = source.getAllSources();
     const existingIds = new Set(allSources.map(s => s.id));
@@ -261,7 +271,7 @@ export class DataSources extends BaseFormApplication {
     return result.sort((a, b) => a.name.localeCompare(b.name));
   }
 
-  // get world journals that aren't already in our sources
+  /** @returns {{ id: string, name: string }[]} */
   #getAvailableWorldJournals() {
     const allSources = source.getAllSources();
     const existingIds = new Set(allSources.map(s => s.id));
@@ -276,7 +286,7 @@ export class DataSources extends BaseFormApplication {
     return result.sort((a, b) => a.name.localeCompare(b.name));
   }
 
-  // show a dialog to pick from available sources
+  /** @returns {Promise<string|null>} Chosen source id or null. */
   async #selectSource() {
     const compendiums = this.#getAvailableCompendiums();
     const journals = this.#getAvailableWorldJournals();

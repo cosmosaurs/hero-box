@@ -1,3 +1,7 @@
+/**
+ * @fileoverview Bulk or single image import into a target journal with tag inference.
+ */
+
 import { MODULE_ID, FLAGS, DEFAULT_IMAGE_DATA, PATHS } from '../../constants/index.mjs';
 import { logger } from '../../utils/index.mjs';
 import { browseImage, browseFolder, scanFolderForImages, getFileNameFromPath, parseTagsFromFileName } from '../../utils/filepicker.mjs';
@@ -5,12 +9,12 @@ import { getJournalForWrite } from '../../utils/source.mjs';
 import { tagIndex, tag } from '../../services/index.mjs';
 import { BaseFormApplication } from '../base/base.mjs';
 
+/** Import mode: single file vs folder scan. */
 export const MODE = {
   SINGLE: 'single',
   FOLDER: 'folder',
 };
 
-// dialog for importing images — either one at a time or scanning a folder
 export class ImageImport extends BaseFormApplication {
   static DEFAULT_OPTIONS = {
     id: `${MODULE_ID}-image-import`,
@@ -57,6 +61,11 @@ export class ImageImport extends BaseFormApplication {
   #scale = DEFAULT_IMAGE_DATA.scale;
   #dynamicRing = DEFAULT_IMAGE_DATA.dynamicRing;
 
+  /**
+   * @param {string} journalId
+   * @param {string} [mode]
+   * @param {function(): void} [onSave]
+   */
   constructor(journalId, mode = MODE.SINGLE, onSave = null) {
     super();
     this.#journalId = journalId;
@@ -64,7 +73,11 @@ export class ImageImport extends BaseFormApplication {
     this.#mode = mode;
   }
 
-  // open the dialog and return a promise that resolves when done
+  /**
+   * @param {string} journalId
+   * @param {string} [mode]
+   * @returns {Promise<boolean>} True if import completed successfully.
+   */
   static async open(journalId, mode = MODE.SINGLE) {
     const { createSingleResolvePromise } = await import('../../utils/promise.mjs');
     const { promise, resolve } = createSingleResolvePromise();
@@ -85,11 +98,13 @@ export class ImageImport extends BaseFormApplication {
     return game.i18n.localize('cs-hero-box.imageImport.title');
   }
 
+  /** @param {object} context @param {object} options */
   _onRender(context, options) {
     super._onRender(context, options);
     this.#bindInputs();
   }
 
+  /** @returns {object} */
   _prepareContext(options) {
     const isSingleMode = this.#mode === MODE.SINGLE;
     const isFolderMode = this.#mode === MODE.FOLDER;
@@ -114,7 +129,7 @@ export class ImageImport extends BaseFormApplication {
     };
   }
 
-  // handle form submission — import based on current mode
+  /** @returns {Promise<boolean>} */
   async _onFormSubmit(event, form, formData) {
     this.#scale = parseFloat(formData.object.scale) || DEFAULT_IMAGE_DATA.scale;
     this.#dynamicRing = formData.object.dynamicRing ?? DEFAULT_IMAGE_DATA.dynamicRing;
@@ -135,7 +150,7 @@ export class ImageImport extends BaseFormApplication {
     return false;
   }
 
-  // import a single image with token/portrait urls
+  /** @param {object} formData @returns {Promise<void>} */
   async #doSingleImport(formData) {
     const tokenUrl = formData.tokenUrl?.trim() || '';
     const portraitUrl = formData.portraitUrl?.trim() || '';
@@ -155,7 +170,7 @@ export class ImageImport extends BaseFormApplication {
     }], this.#journalId);
   }
 
-  // scan folders and import all found images, pairing by filename
+  /** @param {object} formData @returns {Promise<void>} */
   async #doFolderImport(formData) {
     const tokenFolder = formData.tokenFolder?.trim() || '';
     const portraitFolder = formData.portraitFolder?.trim() || '';
@@ -176,7 +191,7 @@ export class ImageImport extends BaseFormApplication {
     await this.#importImages(fileMap, this.#journalId);
   }
 
-  // switch between single file and folder scan modes
+  /** Toggle single vs folder import UI. */
   _onSetMode(event, target) {
     const mode = target.dataset.mode;
     if (mode && mode !== this.#mode) {
@@ -185,6 +200,7 @@ export class ImageImport extends BaseFormApplication {
     }
   }
 
+  /** Opens file picker for token image path. */
   _onBrowseToken() {
     browseImage(this.#tokenUrl, (path) => {
       this.#tokenUrl = path;
@@ -192,6 +208,7 @@ export class ImageImport extends BaseFormApplication {
     });
   }
 
+  /** Opens file picker for portrait image path. */
   _onBrowsePortrait() {
     browseImage(this.#portraitUrl, (path) => {
       this.#portraitUrl = path;
@@ -199,6 +216,7 @@ export class ImageImport extends BaseFormApplication {
     });
   }
 
+  /** Opens folder picker for token images directory. */
   _onBrowseTokenFolder() {
     browseFolder(this.#tokenFolder, (path) => {
       this.#tokenFolder = path;
@@ -206,6 +224,7 @@ export class ImageImport extends BaseFormApplication {
     });
   }
 
+  /** Opens folder picker for portrait images directory. */
   _onBrowsePortraitFolder() {
     browseFolder(this.#portraitFolder, (path) => {
       this.#portraitFolder = path;
@@ -213,7 +232,7 @@ export class ImageImport extends BaseFormApplication {
     });
   }
 
-  // wire up input change handlers to update preview
+  /** Sync form fields to instance state; re-render on URL changes. */
   #bindInputs() {
     const inputs = {
       'input[name="tokenUrl"]': (v) => this.#tokenUrl = v,
@@ -243,13 +262,18 @@ export class ImageImport extends BaseFormApplication {
     }
   }
 
-  // get all tag ids we know about for filename parsing
+  /** @returns {string[]} */
   #getAllKnownTagIds() {
     const allTags = tag.getAll();
     return allTags.map(t => t.id);
   }
 
-  // match token and portrait files by name, extract tags from filenames
+  /**
+   * @param {string[]} tokenFiles
+   * @param {string[]} portraitFiles
+   * @param {string[]} knownTagIds
+   * @returns {object[]}
+   */
   #buildFileMap(tokenFiles, portraitFiles, knownTagIds) {
     const tokenMap = new Map(tokenFiles.map(f => [getFileNameFromPath(f), f]));
     const portraitMap = new Map(portraitFiles.map(f => [getFileNameFromPath(f), f]));
@@ -269,7 +293,11 @@ export class ImageImport extends BaseFormApplication {
     return result;
   }
 
-  // create or update journal pages for the imported images
+  /**
+   * @param {object[]} fileMap
+   * @param {string} journalId
+   * @returns {Promise<{ created: number, updated: number }>}
+   */
   async #importImages(fileMap, journalId) {
     const journal = await getJournalForWrite(journalId);
     if (!journal) return { created: 0, updated: 0 };
@@ -287,7 +315,6 @@ export class ImageImport extends BaseFormApplication {
       }
     }
 
-    // update existing images
     for (const { existing, data } of toUpdate) {
       try {
         const page = await fromUuid(existing.uuid);
@@ -309,7 +336,6 @@ export class ImageImport extends BaseFormApplication {
       }
     }
 
-    // create new images as journal pages
     if (toCreate.length > 0) {
       const pages = toCreate.map(data => ({
         name: data.fileName,

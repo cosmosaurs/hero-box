@@ -1,3 +1,7 @@
+/**
+ * @fileoverview Tag categories, built-in gender/age ids, and helpers.
+ */
+
 export const TAG_CATEGORY = Object.freeze({
   RACE: 'race',
   SUBRACE: 'subrace',
@@ -23,6 +27,10 @@ export const BUILTIN_TAGS = Object.freeze([
   ...Object.values(AGE_TAGS),
 ]);
 
+/**
+ * @param {string} tagId
+ * @returns {boolean}
+ */
 export function isBuiltinTag(tagId) {
   return BUILTIN_TAGS.includes(tagId);
 }

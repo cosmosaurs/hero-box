@@ -1,6 +1,11 @@
+/**
+ * @fileoverview Parse data source ids, load journal pages from world or compendium packs.
+ */
+
 import { MODULE_ID, FLAGS } from '../constants/index.mjs';
 import { logger, safeFromUuid } from './index.mjs';
 
+/** Discriminant for {@link parseSourceId}. */
 export const SOURCE_TYPE = Object.freeze({
   COMPENDIUM: 'compendium',
   WORLD: 'world',
@@ -8,7 +13,10 @@ export const SOURCE_TYPE = Object.freeze({
 
 const COMPENDIUM_PREFIX = 'Compendium.';
 
-// figure out if a source id points to a compendium or a world journal
+/**
+ * @param {string} sourceId
+ * @returns {{ type: string, id: string, packId: string|null }}
+ */
 export function parseSourceId(sourceId) {
   if (sourceId.startsWith(COMPENDIUM_PREFIX)) {
     return {
@@ -25,7 +33,10 @@ export function parseSourceId(sourceId) {
   };
 }
 
-// load all journal pages from a source (compendium or world journal)
+/**
+ * @param {string} sourceId
+ * @returns {Promise<JournalEntryPage[]>}
+ */
 export async function getSourcePages(sourceId) {
   const parsed = parseSourceId(sourceId);
 
@@ -46,7 +57,10 @@ export async function getSourcePages(sourceId) {
   }
 }
 
-// pull all pages out of every journal in a compendium pack
+/**
+ * @param {string} packId
+ * @returns {Promise<JournalEntryPage[]>}
+ */
 async function getCompendiumPages(packId) {
   const pack = game.packs.get(packId);
 
@@ -64,7 +78,10 @@ async function getCompendiumPages(packId) {
   return journals.flatMap(j => Array.from(j.pages));
 }
 
-// get or create the journal we'll write new pages into
+/**
+ * @param {string} sourceId
+ * @returns {Promise<JournalEntry|null>}
+ */
 export async function getJournalForWrite(sourceId) {
   if (!sourceId) return null;
 
@@ -77,7 +94,10 @@ export async function getJournalForWrite(sourceId) {
   return fromUuid(sourceId);
 }
 
-// find the first journal in a compendium, or create one if empty
+/**
+ * @param {string} packId
+ * @returns {Promise<JournalEntry|null>}
+ */
 async function getOrCreateCompendiumJournal(packId) {
   const pack = game.packs.get(packId);
 
@@ -105,7 +125,10 @@ async function getOrCreateCompendiumJournal(packId) {
   return journal;
 }
 
-// check if a world journal has any pages with our module flags
+/**
+ * @param {JournalEntry} journal
+ * @returns {boolean}
+ */
 export function journalHasModuleData(journal) {
   for (const page of journal.pages) {
     const imageData = page.getFlag(MODULE_ID, FLAGS.IMAGE_DATA);

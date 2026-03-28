@@ -1,3 +1,7 @@
+/**
+ * @fileoverview Module bootstrap: init hooks, settings, Handlebars helpers; exposes `game.modules` API on ready.
+ */
+
 import { MODULE_ID } from './constants/index.mjs';
 import { logger, setLogLevel } from './utils/index.mjs';
 import { registerAllHooks } from './hooks/index.mjs';
@@ -9,7 +13,6 @@ import {
   actor,
 } from './services/index.mjs';
 
-// main entry point — runs once when foundry loads the module
 Hooks.once('init', () => {
   logger.info('Initializing...');
 
@@ -25,9 +28,8 @@ Hooks.once('init', () => {
   logger.info('Initialization complete');
 });
 
-// register custom handlebars helpers for our templates
+/** Register `csSwitch`, `csCase`, `concat`, and `eq` Handlebars helpers. */
 function registerHandlebarsHelpers() {
-  // switch/case helper for cleaner conditionals in templates
   Handlebars.registerHelper('csSwitch', function(value, options) {
     this.switch_value = value;
     return options.fn(this);
@@ -51,7 +53,7 @@ function registerHandlebarsHelpers() {
   });
 }
 
-// public api for other modules or macros to use
+/** Public API attached to `game.modules.get(MODULE_ID).api`. */
 export const API = {
   id: MODULE_ID,
   logger,
@@ -63,12 +65,12 @@ export const API = {
     actor,
   },
 
-  // force rebuild the image index from all sources
+  /** @returns {Promise<void>} */
   async reindex() {
     return tagIndex.reindex();
   },
 
-  // find all images matching a list of tags
+  /** @param {string[]} tags @returns {object[]} */
   findImages(tags) {
     return tagIndex.findByTags(tags);
   },
@@ -78,13 +80,12 @@ export const API = {
     return imagePicker.pickRandomByGroups(tagGroups);
   },
 
-  // generate a random name based on tags
+  /** @param {string[]} tags @returns {string} */
   generateName(tags) {
     return nameGenerator.generate(tags);
   }
 };
 
-// expose the api on the module object so others can access it
 Hooks.once('ready', () => {
   const module = game.modules.get(MODULE_ID);
   if (module) {

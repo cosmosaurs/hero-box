@@ -1,9 +1,17 @@
+/**
+ * @fileoverview Flat tag lists ↔ category buckets; filter items by tag-group AND/OR rules.
+ */
+
 import { GENDER_TAGS, AGE_TAGS, TAG_CATEGORY } from '../constants/index.mjs';
 
 const GENDER_IDS = new Set(Object.values(GENDER_TAGS));
 const AGE_IDS = new Set(Object.values(AGE_TAGS));
 
-// split a flat list of tag ids into buckets: gender, age, race, subrace, role, other
+/**
+ * @param {string[]} tags
+ * @param {{ get: (id: string) => { category?: string }|null|undefined }} tagService
+ * @returns {{ gender: string[], age: string[], race: string[], subrace: string[], role: string[], other: string[] }}
+ */
 export function groupTagsByCategory(tags, tagService) {
   const groups = {
     gender: [],
@@ -42,7 +50,13 @@ export function groupTagsByCategory(tags, tagService) {
   return groups;
 }
 
-// filter items where each active tag group has at least one matching tag (OR within group, AND between groups)
+/**
+ * @template T
+ * @param {T[]} items
+ * @param {Record<string, string[]>} tagGroups
+ * @param {(item: T) => string[]} getItemTags
+ * @returns {T[]}
+ */
 export function filterByTagGroups(items, tagGroups, getItemTags) {
   const activeGroups = Object.values(tagGroups).filter(g => g.length > 0);
 

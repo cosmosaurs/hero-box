@@ -1,15 +1,23 @@
+/**
+ * @fileoverview Coalesces many journal page flag updates into batched `updateEmbeddedDocuments` calls.
+ */
+
 import { MODULE_ID, FLAGS } from '../constants/index.mjs';
 import { logger } from './logger.mjs';
 
-// batches multiple page flag writes into a single updateEmbeddedDocuments call
-// so we don't hammer the server when editing 200 images at once
 class BatchWriter {
   #queue = new Map();
   #flushTimer = null;
   #flushDelay = 500;
   #flushing = false;
 
-  // add a write to the queue — will be flushed after a short delay
+  /**
+   * Queue a flag update for a journal page; flushed after debounce or `waitForFlush`.
+   * @param {string} journalUuid
+   * @param {string} pageId
+   * @param {string} flagKey Module flag key (e.g. `IMAGE_DATA`).
+   * @param {unknown} data
+   */
   enqueue(journalUuid, pageId, flagKey, data) {
     if (!this.#queue.has(journalUuid)) {
       this.#queue.set(journalUuid, new Map());
@@ -25,7 +33,7 @@ class BatchWriter {
     this.#scheduleFlush();
   }
 
-  // sets a timer to flush if one isn't already running
+  /** Start debounced flush timer if not already scheduled. */
   #scheduleFlush() {
     if (this.#flushTimer) return;
     this.#flushTimer = setTimeout(() => {
@@ -34,7 +42,7 @@ class BatchWriter {
     }, this.#flushDelay);
   }
 
-  // actually push all queued writes to the server, grouped by journal
+  /** Flush queued updates to Foundry (recursive if queue refills while flushing). */
   async flush() {
     if (this.#flushing || this.#queue.size === 0) return;
     this.#flushing = true;
@@ -80,7 +88,7 @@ class BatchWriter {
     return count;
   }
 
-  // cancel the timer and flush immediately — useful before closing a dialog
+  /** Clear debounce timer and await a full flush (e.g. before closing editor). */
   async waitForFlush() {
     if (this.#flushTimer) {
       clearTimeout(this.#flushTimer);
@@ -90,4 +98,5 @@ class BatchWriter {
   }
 }
 
+/** Global queue for data-manager bulk writes. */
 export const batchWriter = new BatchWriter();
