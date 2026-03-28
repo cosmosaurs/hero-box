@@ -18,13 +18,21 @@ export function registerKeybindings() {
 // open data manager or bring it to front if already open
 async function openDataManager() {
   const { DataManager } = await import('../applications/data-manager/data-manager.mjs');
+  const targetId = `${MODULE_ID}-data-manager`;
 
-  const existingApp = Object.values(ui.windows).find(
-    w => w.id === `${MODULE_ID}-data-manager`
-  );
+  let existingApp = null;
+
+  if (foundry.applications?.instances) {
+    for (const app of foundry.applications.instances.values()) {
+      if (app.id === targetId) {
+        existingApp = app;
+        break;
+      }
+    }
+  }
 
   if (existingApp) {
-    existingApp.bringToFront();
+    await existingApp.close();
   } else {
     new DataManager().render(true);
   }
