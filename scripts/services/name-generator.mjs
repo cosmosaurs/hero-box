@@ -9,6 +9,7 @@ import { tag } from './tag.mjs';
 class NameGeneratorService {
   #nameMeta = [];
   #namesBySetId = new Map();
+  #tagCounts = new Map();
   #initialized = false;
   #raceTagIds = null;
 
@@ -19,8 +20,9 @@ class NameGeneratorService {
 
     try {
       await this.#loadFromSources();
+      this.#buildTagCounts();
       this.#initialized = true;
-      logger.info(`Loaded ${this.#nameMeta.length} name sets, ${this.#namesBySetId.size} fully cached`);
+      logger.info(`Loaded ${this.#nameMeta.length} name sets`);
     } catch (error) {
       logger.error('Failed to initialize name generator:', error);
     } finally {
@@ -48,9 +50,22 @@ class NameGeneratorService {
   async reload() {
     this.#nameMeta = [];
     this.#namesBySetId.clear();
+    this.#tagCounts.clear();
     this.#initialized = false;
     this.#raceTagIds = null;
     await this.initialize();
+  }
+
+  getAllSets() {
+    return this.#nameMeta;
+  }
+
+  getTagCounts() {
+    return this.#tagCounts;
+  }
+
+  get isInitialized() {
+    return this.#initialized;
   }
 
   #assembleWithHook(context, parts, tags) {
@@ -188,6 +203,7 @@ class NameGeneratorService {
     for (const sourceId of sources) {
       try {
         const pages = await getSourcePages(sourceId);
+        const sourceName = source.getSourceName(sourceId);
 
         for (const page of pages) {
           const nameData = getFlag(page, FLAGS.NAME_DATA);
@@ -199,10 +215,20 @@ class NameGeneratorService {
           const nameMap = nameData.names;
           const names = nameMap[locale] ?? nameMap['en'] ?? nameMap[Object.keys(nameMap)[0]] ?? [];
 
+          const locales = Object.keys(nameData.names ?? {});
+          const tagsDisplay = tags.map(t => tag.getLabel(t)).join(', ');
+          const localesDisplay = locales.join(', ');
+
           this.#nameMeta.push({
             id,
+            uuid: page.uuid,
+            name: page.name,
             tags,
             type: nameData.type ?? 'firstName',
+            tagsDisplay,
+            localesDisplay,
+            sourceName,
+            searchString: [page.name, ...tags, tagsDisplay].join(' ').toLowerCase(),
           });
 
           this.#namesBySetId.set(id, names);
@@ -223,6 +249,19 @@ class NameGeneratorService {
   }
 
   // last resort when nothing matches
+  #buildTagCounts() {
+    this.#tagCounts.clear();
+
+    for (const set of this.#nameMeta) {
+      const type = set.type ?? 'firstName';
+      this.#tagCounts.set(type, (this.#tagCounts.get(type) ?? 0) + 1);
+
+      for (const t of set.tags) {
+        this.#tagCounts.set(t, (this.#tagCounts.get(t) ?? 0) + 1);
+      }
+    }
+  }
+
   #fallbackName() {
     return `${game.i18n.localize('cs-hero-box.actor.fallbackName')} #${foundry.utils.randomID(8)}`;
   }

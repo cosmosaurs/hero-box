@@ -1,9 +1,7 @@
 import { NAME_TYPES } from '../../constants/ui.mjs';
-import { FLAGS } from '../../constants/index.mjs';
-import { getFlag, logger } from '../../utils/index.mjs';
-import { getSourcePages } from '../../utils/source.mjs';
+import { logger } from '../../utils/index.mjs';
 import { buildSidebarCategories, handleTagToggle } from '../../utils/sidebar.mjs';
-import { nameGenerator, tag, source } from '../../services/index.mjs';
+import { nameGenerator, tag } from '../../services/index.mjs';
 import { sortByLabel } from '../../utils/sort.mjs';
 
 // handles the names tab — loading name sets, filtering, sidebar, crud ops
@@ -12,9 +10,6 @@ export class NamesTab {
   #filters = { tags: [], search: '', types: [] };
   #collapsedGroups = new Set();
 
-  #nameSetCache = null;
-  #nameSetCacheValid = false;
-  #tagCountsCache = null;
   #sortedCache = null;
   #filteredCache = null;
   #lastFilterKey = '';
@@ -35,14 +30,13 @@ export class NamesTab {
   // clears all filters back to defaults
   reset() {
     this.#filters = { tags: [], search: '', types: [] };
+    this.#sortedCache = null;
     this.#filteredCache = null;
+    this.#lastFilterKey = '';
   }
 
   // blows away all cached data so everything gets reloaded
   invalidateCache() {
-    this.#nameSetCacheValid = false;
-    this.#nameSetCache = null;
-    this.#tagCountsCache = null;
     this.#sortedCache = null;
     this.#filteredCache = null;
     this.#lastFilterKey = '';
@@ -50,23 +44,21 @@ export class NamesTab {
 
   // builds the full context for rendering the names tab
   async prepareContext() {
-    const nameSets = await this.#loadNameSets();
-
-    if (!this.#tagCountsCache) {
-      this.#tagCountsCache = this.#buildTagCounts(nameSets);
-    }
+    const allSets = nameGenerator.getAllSets();
 
     if (!this.#sortedCache) {
-      this.#sortedCache = sortByLabel(nameSets);
+      this.#sortedCache = sortByLabel(allSets);
     }
 
     const filteredSets = this.#getFilteredSets();
+    const tagCounts = nameGenerator.getTagCounts();
 
     const tagsByCategory = buildSidebarCategories({
-      tagCounts: this.#tagCountsCache,
+      tagCounts,
       activeTags: this.#filters.tags,
       activeTypes: this.#filters.types,
       showTypes: true,
+      hideAge: true,
       typeOptions: NAME_TYPES.map(id => ({
         id,
         label: game.i18n.localize(`cs-hero-box.nameType.${id}`),
@@ -84,7 +76,7 @@ export class NamesTab {
         sourceName: set.sourceName,
       })),
       tagsByCategory,
-      totalSets: nameSets.length,
+      totalSets: allSets.length,
       filteredSets: filteredSets.length,
     };
   }
@@ -140,6 +132,7 @@ export class NamesTab {
     const { Editor } = await import('../editor/editor.mjs');
     const saved = await Editor.openName(null, this.#app.selectedJournalId);
     if (saved) {
+      await nameGenerator.reload();
       this.invalidateCache();
       this.#app.render();
     }
@@ -154,6 +147,7 @@ export class NamesTab {
         const { Editor } = await import('../editor/editor.mjs');
         const saved = await Editor.openName(page);
         if (saved) {
+          await nameGenerator.reload();
           this.invalidateCache();
           this.#app.render();
         }
@@ -245,77 +239,5 @@ export class NamesTab {
         });
       }
     }
-  }
-
-  // loads all name sets from all data sources, cached until invalidated
-  async #loadNameSets() {
-    if (this.#nameSetCacheValid && this.#nameSetCache) {
-      return this.#nameSetCache;
-    }
-
-    const sources = source.getDataSources();
-    const nameSets = [];
-
-    for (const sourceId of sources) {
-      try {
-        const pages = await getSourcePages(sourceId);
-        const sourceName = source.getSourceName(sourceId);
-
-        for (const page of pages) {
-          const nameData = getFlag(page, FLAGS.NAME_DATA);
-          if (!nameData) continue;
-
-          const tags = this.#extractTags(nameData);
-          const locales = Object.keys(nameData.names ?? {});
-
-          const tagsDisplay = tags.map(t => tag.getLabel(t)).join(', ');
-          const localesDisplay = locales.join(', ');
-
-          nameSets.push({
-            uuid: page.uuid,
-            name: page.name,
-            type: nameData.type ?? 'firstName',
-            tags,
-            tagsDisplay,
-            localesDisplay,
-            sourceName,
-            searchString: [page.name, ...tags, tagsDisplay].join(' ').toLowerCase(),
-          });
-        }
-      } catch (error) {
-        logger.warn(`Failed to load names from source ${sourceId}:`, error);
-      }
-    }
-
-    this.#nameSetCache = nameSets;
-    this.#nameSetCacheValid = true;
-    return nameSets;
-  }
-
-  // pulls tags from name data, falling back to legacy gender/race/subrace fields
-  #extractTags(nameData) {
-    if (nameData.tags) return nameData.tags;
-
-    const tags = [];
-    if (nameData.genders?.length) tags.push(...nameData.genders);
-    if (nameData.races?.length) tags.push(...nameData.races);
-    if (nameData.subraces?.length) tags.push(...nameData.subraces);
-    return tags;
-  }
-
-  // counts how many name sets use each tag and type for sidebar display
-  #buildTagCounts(nameSets) {
-    const counts = new Map();
-
-    for (const set of nameSets) {
-      const type = set.type ?? 'firstName';
-      counts.set(type, (counts.get(type) ?? 0) + 1);
-
-      for (const t of set.tags) {
-        counts.set(t, (counts.get(t) ?? 0) + 1);
-      }
-    }
-
-    return counts;
   }
 }

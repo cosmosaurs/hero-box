@@ -326,4 +326,14 @@ export class DataManager extends BaseApplication {
       popup.remove();
     }
   }
+
+  refreshAllTabs() {
+    for (const tabInstance of Object.values(this.#tabs)) {
+      if (typeof tabInstance.invalidateCache === 'function') {
+        tabInstance.invalidateCache();
+      }
+    }
+    this.#journalsCache = null;
+    this.render();
+  }
 }
