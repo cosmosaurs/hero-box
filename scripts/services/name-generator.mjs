@@ -40,15 +40,16 @@ class NameGeneratorService {
     }
 
     const context = this.#parseContext(tags);
-    const firstName = await this.#pickName('firstName', context);
-    const lastName = await this.#pickName('lastName', context);
-    const clan = await this.#pickName('clan', context);
-    const nickname = await this.#pickName('nickname', context);
+    const parts = {
+      firstName: await this.#pickName('firstName', context),
+      lastName: await this.#pickName('lastName', context),
+      clan: await this.#pickName('clan', context),
+      nickname: await this.#pickName('nickname', context),
+    };
 
-    return this.#assemble({ ...context, firstName, lastName, clan, nickname });
+    return this.#assembleWithHook(context, parts, tags);
   }
 
-  // extract race, subrace, gender, age from the tag list
   generateSync(tags) {
     if (!this.#initialized) {
       logger.warn('Name generator not initialized');
@@ -56,12 +57,57 @@ class NameGeneratorService {
     }
 
     const context = this.#parseContext(tags);
-    const firstName = this.#pickNameSync('firstName', context);
-    const lastName = this.#pickNameSync('lastName', context);
-    const clan = this.#pickNameSync('clan', context);
-    const nickname = this.#pickNameSync('nickname', context);
+    const parts = {
+      firstName: this.#pickNameSync('firstName', context),
+      lastName: this.#pickNameSync('lastName', context),
+      clan: this.#pickNameSync('clan', context),
+      nickname: this.#pickNameSync('nickname', context),
+    };
 
-    return this.#assemble({ ...context, firstName, lastName, clan, nickname });
+    return this.#assembleWithHook(context, parts, tags);
+  }
+
+  #assembleWithHook(context, parts, tags) {
+    const nameData = {
+      context: { ...context },
+      parts: { ...parts },
+      tags: [...tags],
+      useNickname: parts.nickname && Math.random() < UI.NICKNAME_CHANCE,
+      result: null,
+    };
+
+    Hooks.callAll('cs-hero-box.preGenerateName', nameData);
+
+    if (typeof nameData.result === 'string' && nameData.result.length > 0) {
+      return nameData.result;
+    }
+
+    return this.#assemble(nameData);
+  }
+
+  #assemble(nameData) {
+    const { context, parts, useNickname } = nameData;
+    const { firstName, lastName, clan, nickname } = parts;
+
+    const segments = [];
+
+    if (firstName) segments.push(firstName);
+
+    if (useNickname && nickname) {
+      if (segments.length > 0 || lastName || clan) {
+        segments.push(`«${nickname}»`);
+      } else {
+        segments.push(nickname);
+      }
+    }
+
+    if (lastName) {
+      segments.push(lastName);
+    } else if (clan) {
+      segments.push(clan);
+    }
+
+    return segments.length ? segments.join(' ') : this.#fallbackName();
   }
 
   #parseContext(tags) {
@@ -215,36 +261,6 @@ class NameGeneratorService {
     }
 
     return null;
-  }
-
-  // combine name parts into a full name string
-  #assemble({ race, firstName, lastName, clan, nickname }) {
-    const parts = [];
-
-    // dragonborn put clan name first
-    if (race === 'dragonborn' && clan) parts.push(clan);
-    if (firstName) parts.push(firstName);
-
-    const hasOtherParts = parts.length > 0 || lastName || (race !== 'dragonborn' && clan);
-    const useNickname = nickname && Math.random() < UI.NICKNAME_CHANCE;
-
-    if (useNickname) {
-      if (hasOtherParts) {
-        parts.push(`«${nickname}»`);
-      } else {
-        parts.push(nickname);
-      }
-    }
-
-    if (race !== 'dragonborn') {
-      if (lastName) {
-        parts.push(lastName);
-      } else if (clan) {
-        parts.push(clan);
-      }
-    }
-
-    return parts.length ? parts.join(' ') : this.#fallbackName();
   }
 
   // load name set metadata from all configured data sources
