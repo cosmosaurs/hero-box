@@ -81,6 +81,14 @@ export function registerSettings() {
     type: Number,
     default: 0,
   });
+  
+  game.settings.register(MODULE_ID, SETTINGS.NO_LAST_NAME_CHANCE, {
+    name: 'No Last Name Chance',
+    scope: 'client',
+    config: false,
+    type: Number,
+    default: 0,
+  });
 
   // add the button in module settings to open the data manager
   game.settings.registerMenu(MODULE_ID, 'dataManagerMenu', {

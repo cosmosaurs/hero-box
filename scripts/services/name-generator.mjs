@@ -40,7 +40,7 @@ class NameGeneratorService {
    * @param {string[]} tags Image / criteria tags used to match name sets.
    * @returns {string} Full generated name (or fallback).
    */
-  generate(tags, nicknameChance, nicknameOnlyChance) {
+  generate(tags, nicknameChance, nicknameOnlyChance, noLastNameChance) {
     if (!this.#initialized) {
       logger.warn('Name generator not initialized');
       return this.#fallbackName();
@@ -49,6 +49,8 @@ class NameGeneratorService {
     const context = this.#parseContext(tags);
     if (nicknameChance !== undefined) context.nicknameChance = nicknameChance;
     if (nicknameOnlyChance !== undefined) context.nicknameOnlyChance = nicknameOnlyChance;
+    if (noLastNameChance !== undefined) context.noLastNameChance = noLastNameChance;
+
     const parts = {
       firstName: this.#pickName('firstName', context),
       lastName: this.#pickName('lastName', context),
@@ -89,6 +91,7 @@ class NameGeneratorService {
   #assembleWithHook(context, parts, tags) {
     const nicknameChance = context.nicknameChance ?? UI.NICKNAME_CHANCE;
     const nicknameOnlyChance = context.nicknameOnlyChance ?? UI.NICKNAME_ONLY_CHANCE;
+    const noLastNameChance = context.noLastNameChance ?? 0;
 
     const nameData = {
       context: { ...context },
@@ -96,6 +99,7 @@ class NameGeneratorService {
       tags: [...tags],
       useNickname: parts.nickname && Math.random() < nicknameChance,
       nicknameOnly: false,
+      skipLastName: noLastNameChance > 0 && Math.random() < noLastNameChance,
       result: null,
     };
 
@@ -117,7 +121,7 @@ class NameGeneratorService {
    * @returns {string}
    */
   #assemble(nameData) {
-    const { parts, useNickname, nicknameOnly } = nameData;
+    const { parts, useNickname, nicknameOnly, skipLastName } = nameData;
     const { firstName, lastName, nickname } = parts;
 
     if (nicknameOnly && nickname) {
@@ -129,14 +133,14 @@ class NameGeneratorService {
     if (firstName) segments.push(firstName);
 
     if (useNickname && nickname) {
-      if (segments.length || lastName) {
+      if (segments.length || (!skipLastName && lastName)) {
         segments.push(`«${nickname}»`);
       } else {
         segments.push(nickname);
       }
     }
 
-    if (lastName) {
+    if (!skipLastName && lastName) {
       segments.push(lastName);
     }
 

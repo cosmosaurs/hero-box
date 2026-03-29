@@ -144,7 +144,8 @@ class ActorService {
 
     const nicknameChance = (criteria.nicknameChance ?? 50) / 100;
     const nicknameOnlyChance = (criteria.nicknameOnlyChance ?? 0) / 100;
-    const name = nameGenerator.generate(imageData.tags, nicknameChance, nicknameOnlyChance);
+    const noLastNameChance = (criteria.noLastNameChance ?? 0) / 100;
+    const name = nameGenerator.generate(imageData.tags, nicknameChance, nicknameOnlyChance, noLastNameChance);
     const scale = imageData.scale ?? 1;
 
     token.updateSource({
@@ -302,6 +303,7 @@ class ActorService {
           fixedImageUuid: null,
           nicknameChance: input.nicknameChance ?? 50,
           nicknameOnlyChance: input.nicknameOnlyChance ?? 0,
+          noLastNameChance: input.noLastNameChance ?? 0,
         },
       },
     };
@@ -318,7 +320,8 @@ class ActorService {
       const imageTags = imageData.tags ?? [];
       const nicknameChance = (input.nicknameChance ?? 50) / 100;
       const nicknameOnlyChance = (input.nicknameOnlyChance ?? 0) / 100;
-      const name = nameGenerator.generate(imageTags, nicknameChance, nicknameOnlyChance);
+      const noLastNameChance = (input.noLastNameChance ?? 0) / 100;
+      const name = nameGenerator.generate(imageTags, nicknameChance, nicknameOnlyChance, noLastNameChance);
       const scale = imageData.scale ?? 1;
 
       actorData.name = name;
