@@ -24,6 +24,7 @@ class FilterWorkerBridge {
    */
   async initialize(itemCount) {
     if (itemCount < WORKER_THRESHOLD) {
+      this.destroy();
       this.#available = false;
       return;
     }
@@ -84,13 +85,14 @@ class FilterWorkerBridge {
           this.#pendingResolve = null;
           this.#pendingReject = null;
         }
+        this.destroy();
       };
 
       this.#available = true;
       logger.debug('Filter worker initialized');
     } catch (error) {
       logger.debug('Worker not available, falling back to main thread:', error);
-      this.#available = false;
+      this.destroy();
     }
   }
 
@@ -132,10 +134,17 @@ class FilterWorkerBridge {
 
   destroy() {
     if (this.#worker) {
-      this.#worker.terminate();
+      try {
+        this.#worker.terminate();
+      } catch {}
       this.#worker = null;
     }
     this.#available = false;
+    if (this.#pendingReject) {
+      try {
+        this.#pendingReject(new Error('Worker destroyed'));
+      } catch {}
+    }
     this.#pendingResolve = null;
     this.#pendingReject = null;
   }

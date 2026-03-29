@@ -69,6 +69,9 @@ export class DataSources extends BaseFormApplication {
    * @returns {Promise<boolean>}
    */
   async _onFormSubmit(event, form, formData) {
+    const submitBtn = this.querySelector('button[type="submit"]');
+    if (submitBtn) submitBtn.disabled = true;
+
     const needsReload = this.#pendingReload;
     this.#pendingReload = false;
 
@@ -79,11 +82,9 @@ export class DataSources extends BaseFormApplication {
         await tag.reload();
         await tagIndex.reindex();
         await nameGenerator.reload();
+
         this.#refreshDataManager();
-        ui.notifications.info(game.i18n.localize('cs-hero-box.dataSources.saved'));
       }, 50);
-    } else {
-      ui.notifications.info(game.i18n.localize('cs-hero-box.dataSources.saved'));
     }
 
     return false;
@@ -167,11 +168,9 @@ export class DataSources extends BaseFormApplication {
 
     for (const journal of game.journal) {
       const journalId = journal.uuid;
-
       if (existingIds.has(journalId)) continue;
 
       const hasData = journalHasModuleData(journal);
-
       if (hasData) {
         await source.addSource(journalId);
         existingIds.add(journalId);
@@ -187,7 +186,6 @@ export class DataSources extends BaseFormApplication {
 
       try {
         const hasData = await this.#compendiumHasModuleData(pack);
-
         if (hasData) {
           await source.addSource(packId);
           existingIds.add(packId);
@@ -211,7 +209,6 @@ export class DataSources extends BaseFormApplication {
   async #compendiumHasModuleData(pack) {
     try {
       const journals = await pack.getDocuments();
-
       for (const journal of journals) {
         if (journalHasModuleData(journal)) {
           return true;
@@ -220,22 +217,29 @@ export class DataSources extends BaseFormApplication {
     } catch {
       return false;
     }
-
     return false;
   }
 
   /** Re-render open Data Manager and invalidate tab caches. */
   #refreshDataManager() {
-    const dataManagerId = `${MODULE_ID}-data-manager`;
-    const openApp = Object.values(ui.windows).find(w => w.id === dataManagerId);
-    if (openApp) {
-      const tabs = openApp['#tabs'] ?? openApp._tabs;
-      if (tabs) {
-        for (const tabInstance of Object.values(tabs)) {
-          if (tabInstance.invalidateCache) tabInstance.invalidateCache();
+    const targetId = `${MODULE_ID}-data-manager`;
+    let openApp = null;
+
+    if (foundry.applications?.instances) {
+      for (const app of foundry.applications.instances.values()) {
+        if (app.id === targetId) {
+          openApp = app;
+          break;
         }
       }
-      openApp.render();
+    }
+
+    if (!openApp) {
+      openApp = Object.values(ui.windows).find(w => w.id === targetId) ?? null;
+    }
+
+    if (openApp && typeof openApp.refreshAllTabs === 'function') {
+      openApp.refreshAllTabs();
     }
   }
 
@@ -274,7 +278,6 @@ export class DataSources extends BaseFormApplication {
     for (const journal of game.journal) {
       const id = journal.uuid;
       if (existingIds.has(id)) continue;
-
       result.push({ id, name: journal.name });
     }
 

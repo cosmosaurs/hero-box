@@ -379,62 +379,124 @@ export class ImagesTab {
     const knownTagIds = tag.getAll().map(t => t.id);
     const updates = [];
     const pagesByJournal = new Map();
+    const total = uuids.length;
+    let processed = 0;
 
-    for (const uuid of uuids) {
-      try {
-        const page = await fromUuid(uuid);
-        if (!page) continue;
+    const toolbar = this.#app.querySelector('.cs-hero-box-data-manager__toolbar');
+    let progressEl = null;
 
-        const imageData = page.getFlag(MODULE_ID, FLAGS.IMAGE_DATA) ?? {};
-        const currentTags = new Set(imageData.tags ?? []);
+    if (toolbar) {
+      progressEl = document.createElement('div');
+      progressEl.className = 'cs-hero-box-data-manager__delete-progress';
+      progressEl.innerHTML = `
+        <div class="cs-hero-box-data-manager__progress-track">
+          <div class="cs-hero-box-data-manager__progress-bar" style="width: 0%"></div>
+        </div>
+        <span class="cs-hero-box-data-manager__progress-text">0 / ${total}</span>
+      `;
 
-        const fileName = (imageData.portraitUrl || imageData.tokenUrl || page.name || '').split('/').pop();
-        const parsedTags = parseTagsFromFileName(fileName, knownTagIds);
+      const toolbarInfo = toolbar.querySelector('.cs-hero-box-data-manager__toolbar-info');
+      if (toolbarInfo) {
+        toolbarInfo.style.display = 'none';
+      }
+      const toolbarActions = toolbar.querySelector('.cs-hero-box-data-manager__toolbar-actions');
+      if (toolbarActions) {
+        toolbarActions.style.display = 'none';
+      }
+      toolbar.prepend(progressEl);
+    }
 
-        let hasChanges = false;
-        for (const tagId of parsedTags) {
-          if (!currentTags.has(tagId)) {
-            currentTags.add(tagId);
-            hasChanges = true;
+    const updateProgress = () => {
+      if (!progressEl) return;
+      const pct = Math.round((processed / total) * 100);
+      const bar = progressEl.querySelector('.cs-hero-box-data-manager__progress-bar');
+      const text = progressEl.querySelector('.cs-hero-box-data-manager__progress-text');
+      if (bar) bar.style.width = `${pct}%`;
+      if (text) text.textContent = `${processed} / ${total}`;
+    };
+
+    const BATCH_SIZE = 50;
+
+    for (let batchStart = 0; batchStart < uuids.length; batchStart += BATCH_SIZE) {
+      const batchEnd = Math.min(batchStart + BATCH_SIZE, uuids.length);
+      const batch = uuids.slice(batchStart, batchEnd);
+
+      for (const uuid of batch) {
+        try {
+          const page = await fromUuid(uuid);
+          if (!page) {
+            processed++;
+            continue;
           }
+
+          const imageData = page.getFlag(MODULE_ID, FLAGS.IMAGE_DATA) ?? {};
+          const currentTags = new Set(imageData.tags ?? []);
+
+          const fileName = (imageData.portraitUrl || imageData.tokenUrl || page.name || '').split('/').pop();
+          const parsedTags = parseTagsFromFileName(fileName, knownTagIds);
+
+          let hasChanges = false;
+          for (const tagId of parsedTags) {
+            if (!currentTags.has(tagId)) {
+              currentTags.add(tagId);
+              hasChanges = true;
+            }
+          }
+
+          if (hasChanges) {
+            const newTags = Array.from(currentTags);
+            const newImageData = { ...imageData, tags: newTags };
+
+            const journalUuid = page.parent.uuid;
+            if (!pagesByJournal.has(journalUuid)) {
+              pagesByJournal.set(journalUuid, []);
+            }
+            pagesByJournal.get(journalUuid).push({ page, newImageData });
+            updates.push({ uuid, imageData: newImageData });
+          }
+        } catch (error) {
+          logger.warn(`Failed to process ${uuid}:`, error);
         }
 
-        if (hasChanges) {
-          const newTags = Array.from(currentTags);
-          const newImageData = { ...imageData, tags: newTags };
+        processed++;
+      }
 
-          const journalUuid = page.parent.uuid;
-          if (!pagesByJournal.has(journalUuid)) {
-            pagesByJournal.set(journalUuid, []);
-          }
-          pagesByJournal.get(journalUuid).push({ page, newImageData });
-          updates.push({ uuid, imageData: newImageData });
-        }
-      } catch (error) {
-        logger.warn(`Failed to process ${uuid}:`, error);
+      updateProgress();
+
+      if (batchEnd < uuids.length) {
+        await new Promise(r => setTimeout(r, 0));
       }
     }
 
-    if (updates.length === 0) return;
+    if (updates.length > 0) {
+      for (const [journalUuid, journalPages] of pagesByJournal) {
+        try {
+          const journal = await fromUuid(journalUuid);
+          if (!journal) continue;
 
-    for (const [journalUuid, journalPages] of pagesByJournal) {
-      try {
-        const journal = await fromUuid(journalUuid);
-        if (!journal) continue;
+          const journalUpdates = journalPages.map(({ page, newImageData }) => ({
+            _id: page.id,
+            [`flags.${MODULE_ID}.${FLAGS.IMAGE_DATA}`]: newImageData,
+          }));
 
-        const journalUpdates = journalPages.map(({ page, newImageData }) => ({
-          _id: page.id,
-          [`flags.${MODULE_ID}.${FLAGS.IMAGE_DATA}`]: newImageData,
-        }));
-
-        await journal.updateEmbeddedDocuments('JournalEntryPage', journalUpdates);
-      } catch (error) {
-        logger.warn(`Failed to update journal ${journalUuid}:`, error);
+          await journal.updateEmbeddedDocuments('JournalEntryPage', journalUpdates);
+        } catch (error) {
+          logger.warn(`Failed to update journal ${journalUuid}:`, error);
+        }
       }
+
+      tagIndex.updateImages(updates);
+    }
+
+    if (progressEl) {
+      progressEl.remove();
+      const toolbarInfo = toolbar?.querySelector('.cs-hero-box-data-manager__toolbar-info');
+      const toolbarActions = toolbar?.querySelector('.cs-hero-box-data-manager__toolbar-actions');
+      if (toolbarInfo) toolbarInfo.style.display = '';
+      if (toolbarActions) toolbarActions.style.display = '';
     }
 
     this.#saveScrollPosition();
-    tagIndex.updateImages(updates);
     this.#refreshAfterEditInPlace();
   }
 
@@ -867,7 +929,10 @@ export class ImagesTab {
       this.#popupElement = null;
     }
     this.#currentHoveredCard = null;
-    filterWorker.destroy();
+
+    try {
+      filterWorker.destroy();
+    } catch {}
     this.#workerInitialized = false;
   }
 }

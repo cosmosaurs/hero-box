@@ -63,7 +63,10 @@ export class TagsTab {
       activeTags: this.#filters.tags,
       activeCategories: this.#filters.categories,
       showCategoryFilter: true,
-      hideGenderAge: true,
+      hideGender: true,
+      hideAge: true,
+      hideSubrace: true,
+      hideRole: true,
     });
 
     return {

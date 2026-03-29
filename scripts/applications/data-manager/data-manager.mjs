@@ -167,6 +167,7 @@ export class DataManager extends BaseApplication {
   /** Tears down the images tab (virtual scroll, worker) before base close. */
   _onClose(options) {
     this.#tabs[TAB.IMAGES].destroy();
+    this.#removeOrphanedPopup();
     return super._onClose(options);
   }
 
@@ -326,4 +327,21 @@ export class DataManager extends BaseApplication {
 
   _onToggleTag(e, t) { this.#tabs[this.#activeTab].onToggleTag(e, t); }
   _onToggleTagGroup(e, t) { this.#tabs[this.#activeTab].onToggleTagGroup(e, t); }
+
+  #removeOrphanedPopup() {
+    const popup = document.querySelector('.cs-hero-box-card-popup');
+    if (popup) {
+      popup.remove();
+    }
+  }
+
+  refreshAllTabs() {
+    for (const tabInstance of Object.values(this.#tabs)) {
+      if (typeof tabInstance.invalidateCache === 'function') {
+        tabInstance.invalidateCache();
+      }
+    }
+    this.#journalsCache = null;
+    this.render();
+  }
 }

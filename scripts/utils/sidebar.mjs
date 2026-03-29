@@ -18,7 +18,10 @@ export function buildSidebarCategories(options = {}) {
     activeCategories = [],
     showTypes = false,
     showCategoryFilter = false,
-    hideGenderAge = false,
+    hideGender = false,
+    hideAge = false,
+    hideSubrace = false,
+    hideRole = false,
     typeOptions = [],
   } = options;
 
@@ -69,7 +72,7 @@ export function buildSidebarCategories(options = {}) {
     };
   }
 
-  if (!hideGenderAge) {
+  if (!hideGender) {
     categories.gender = {
       label: game.i18n.localize('cs-hero-box.form.labels.gender'),
       icon: 'fa-venus-mars',
@@ -81,7 +84,9 @@ export function buildSidebarCategories(options = {}) {
         isActive: activeTagsSet.has(t.id),
       })),
     };
+  }
 
+  if (!hideAge) {
     categories.age = {
       label: game.i18n.localize('cs-hero-box.form.labels.age'),
       icon: 'fa-hourglass-half',
@@ -109,39 +114,42 @@ export function buildSidebarCategories(options = {}) {
     tags: races.filter(t => t.count > 0 || showCategoryFilter),
   };
 
-  // only show subraces for currently selected races
-  const subraces = tag.getSubraces()
-    .filter(t => activeRaces.size === 0 || activeRaces.has(t.parentRaceId))
-    .map(t => ({
+  if (!hideSubrace) {
+    const subraces = tag.getSubraces()
+      .filter(t => activeRaces.size === 0 || activeRaces.has(t.parentRaceId))
+      .map(t => ({
+        id: t.id,
+        label: tag.getLabel(t.id),
+        tooltip: tag.getLabel(t.parentRaceId),
+        count: tagCounts.get(t.id) ?? 0,
+        isActive: activeTagsSet.has(t.id),
+      }));
+
+    categories.subrace = {
+      label: game.i18n.localize('cs-hero-box.form.labels.subrace'),
+      icon: 'fa-user-friends',
+      collapsible: true,
+      hidden: activeRaces.size === 0,
+      tags: subraces.filter(t => t.count > 0 || showCategoryFilter),
+    };
+  }
+
+  if (!hideRole) {
+    const roles = tag.getRoles().map(t => ({
       id: t.id,
       label: tag.getLabel(t.id),
-      tooltip: tag.getLabel(t.parentRaceId),
       count: tagCounts.get(t.id) ?? 0,
       isActive: activeTagsSet.has(t.id),
     }));
 
-  categories.subrace = {
-    label: game.i18n.localize('cs-hero-box.form.labels.subrace'),
-    icon: 'fa-user-friends',
-    collapsible: true,
-    hidden: activeRaces.size === 0,
-    tags: subraces.filter(t => t.count > 0 || showCategoryFilter),
-  };
-
-  const roles = tag.getRoles().map(t => ({
-    id: t.id,
-    label: tag.getLabel(t.id),
-    count: tagCounts.get(t.id) ?? 0,
-    isActive: activeTagsSet.has(t.id),
-  }));
-
-  if (roles.some(t => t.count > 0) || showCategoryFilter) {
-    categories.role = {
-      label: game.i18n.localize('cs-hero-box.form.labels.role'),
-      icon: 'fa-briefcase',
-      collapsible: true,
-      tags: roles.filter(t => t.count > 0 || showCategoryFilter),
-    };
+    if (roles.some(t => t.count > 0) || showCategoryFilter) {
+      categories.role = {
+        label: game.i18n.localize('cs-hero-box.form.labels.role'),
+        icon: 'fa-briefcase',
+        collapsible: true,
+        tags: roles.filter(t => t.count > 0 || showCategoryFilter),
+      };
+    }
   }
 
   Object.values(categories).forEach(category => {
