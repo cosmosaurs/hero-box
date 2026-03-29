@@ -5,7 +5,8 @@
 import { NAME_TYPES } from '../../constants/ui.mjs';
 import { logger } from '../../utils/index.mjs';
 import { buildSidebarCategories, handleTagToggle } from '../../utils/sidebar.mjs';
-import { nameGenerator, tag } from '../../services/index.mjs';
+import { tag } from '../../services/index.mjs';
+import { nameGenerator } from '../../services/index.mjs';
 import { sortByLabel } from '../../utils/sort.mjs';
 
 /** Tab logic for name sets; `app` is the parent DataManager. */
@@ -181,6 +182,7 @@ export class NamesTab {
 
       if (confirmed) {
         await page.delete();
+        await nameGenerator.reload();
         this.invalidateCache();
         this.#app.render();
       }

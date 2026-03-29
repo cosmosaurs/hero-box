@@ -204,9 +204,13 @@
         "gender": "Gender",
         "age": "Age",
         "role": "Role",
+        "other": "Other",
         "images": "Selected Images",
         "mode": "Token Mode",
-        "sourceActor": "Source Actor"
+        "sourceActor": "Source Actor",
+        "nicknameSettings": "Nickname",
+        "nicknameChance": "Nickname Chance",
+        "nicknameOnlyChance": "Nickname Only Chance"
       },
       "btn": {
         "addMore": "Add More",

@@ -145,6 +145,7 @@
       "race": "Вид",
       "role": "Роль",
       "other": "Другое",
+      "other": "Прочее",
       "customTags": "Пользовательские теги",
       "customPlaceholder": "Введите и нажмите Enter...",
       "nameLabel": "Название набора",
@@ -204,9 +205,13 @@
         "gender": "Пол",
         "age": "Возраст",
         "role": "Роль",
+        "other": "Прочее",
         "images": "Выбранные изображения",
         "mode": "Режим токена",
-        "sourceActor": "Исходный актёр"
+        "sourceActor": "Исходный актёр",
+        "nicknameSettings": "Прозвище",
+        "nicknameChance": "Шанс на прозвище",
+        "nicknameOnlyChance": "Шанс быть только с прозвищем"
       },
       "btn": {
         "addMore": "Добавить",
@@ -249,15 +254,14 @@
       "race": "Вид",
       "subrace": "Подвид",
       "role": "Роль",
-      "other": "Другое",
+      "other": "Прочее",
       "builtin": "Системный"
     },
 
     "nameType": {
       "firstName": "Имя",
       "lastName": "Фамилия",
-      "nickname": "Прозвище",
-      "clan": "Имя клана"
+      "nickname": "Прозвище"
     },
 
     "gender": {

@@ -203,6 +203,7 @@ class ActorService {
       gender: input.gender ?? [],
       age: input.age ?? [],
       role: input.role ?? [],
+      other: input.other ?? [],
     };
 
     if (input.race?.length) {
@@ -231,6 +232,7 @@ class ActorService {
       gender: [],
       age: [],
       role: [],
+      other: [],
     };
 
     const genderIds = new Set(Object.values(GENDER_TAGS));
@@ -250,6 +252,8 @@ class ActorService {
             groups.subrace.push(tagId);
           } else if (tagData.category === TAG_CATEGORY.ROLE) {
             groups.role.push(tagId);
+          } else {
+            groups.other.push(tagId);
           }
         }
       }
