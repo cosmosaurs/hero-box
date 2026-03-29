@@ -40,17 +40,18 @@ class NameGeneratorService {
    * @param {string[]} tags Image / criteria tags used to match name sets.
    * @returns {string} Full generated name (or fallback).
    */
-  generate(tags) {
+  generate(tags, nicknameChance, nicknameOnlyChance) {
     if (!this.#initialized) {
       logger.warn('Name generator not initialized');
       return this.#fallbackName();
     }
 
     const context = this.#parseContext(tags);
+    if (nicknameChance !== undefined) context.nicknameChance = nicknameChance;
+    if (nicknameOnlyChance !== undefined) context.nicknameOnlyChance = nicknameOnlyChance;
     const parts = {
       firstName: this.#pickName('firstName', context),
       lastName: this.#pickName('lastName', context),
-      clan: this.#pickName('clan', context),
       nickname: this.#pickName('nickname', context),
     };
 
@@ -86,13 +87,21 @@ class NameGeneratorService {
    * @returns {string}
    */
   #assembleWithHook(context, parts, tags) {
+    const nicknameChance = context.nicknameChance ?? UI.NICKNAME_CHANCE;
+    const nicknameOnlyChance = context.nicknameOnlyChance ?? UI.NICKNAME_ONLY_CHANCE;
+
     const nameData = {
       context: { ...context },
       parts: { ...parts },
       tags: [...tags],
-      useNickname: parts.nickname && Math.random() < UI.NICKNAME_CHANCE,
+      useNickname: parts.nickname && Math.random() < nicknameChance,
+      nicknameOnly: false,
       result: null,
     };
+
+    if (nameData.useNickname && nicknameOnlyChance > 0 && Math.random() < nicknameOnlyChance) {
+      nameData.nicknameOnly = true;
+    }
 
     Hooks.callAll('cs-hero-box.preGenerateName', nameData);
 
@@ -108,15 +117,19 @@ class NameGeneratorService {
    * @returns {string}
    */
   #assemble(nameData) {
-    const { parts, useNickname } = nameData;
-    const { firstName, lastName, clan, nickname } = parts;
+    const { parts, useNickname, nicknameOnly } = nameData;
+    const { firstName, lastName, nickname } = parts;
+
+    if (nicknameOnly && nickname) {
+      return nickname;
+    }
 
     const segments = [];
 
     if (firstName) segments.push(firstName);
 
     if (useNickname && nickname) {
-      if (segments.length || lastName || clan) {
+      if (segments.length || lastName) {
         segments.push(`«${nickname}»`);
       } else {
         segments.push(nickname);
@@ -125,8 +138,6 @@ class NameGeneratorService {
 
     if (lastName) {
       segments.push(lastName);
-    } else if (clan) {
-      segments.push(clan);
     }
 
     return segments.length ? segments.join(' ') : this.#fallbackName();
@@ -139,7 +150,8 @@ class NameGeneratorService {
   #parseContext(tags) {
     const raceTagIds = this.#getRaceTagIds();
 
-    const race = tags.find(t => raceTagIds.has(t)) ?? null;
+    const races = tags.filter(t => raceTagIds.has(t));
+    const race = races.length > 0 ? races[Math.floor(Math.random() * races.length)] : null;
 
     let subrace = null;
     if (race) {
@@ -209,7 +221,7 @@ class NameGeneratorService {
         t === AGE_TAGS.CHILD || t === AGE_TAGS.ADULT || t === AGE_TAGS.OLD
       );
 
-      if (setRaces.length > 0 && !setRaces.includes(context.race)) return false;
+      if (setRaces.length > 0 && context.race && !setRaces.includes(context.race)) return false;
       if (setSubraces.length > 0 && (!context.subrace || !setSubraces.includes(context.subrace))) return false;
       if (setGenders.length > 0 && context.gender && !setGenders.includes(context.gender)) return false;
       if (setAges.length > 0 && context.age && !setAges.includes(context.age)) return false;
