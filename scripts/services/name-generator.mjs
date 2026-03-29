@@ -50,7 +50,6 @@ class NameGeneratorService {
     const parts = {
       firstName: this.#pickName('firstName', context),
       lastName: this.#pickName('lastName', context),
-      clan: this.#pickName('clan', context),
       nickname: this.#pickName('nickname', context),
     };
 
@@ -109,14 +108,14 @@ class NameGeneratorService {
    */
   #assemble(nameData) {
     const { parts, useNickname } = nameData;
-    const { firstName, lastName, clan, nickname } = parts;
+    const { firstName, lastName, nickname } = parts;
 
     const segments = [];
 
     if (firstName) segments.push(firstName);
 
     if (useNickname && nickname) {
-      if (segments.length || lastName || clan) {
+      if (segments.length || lastName) {
         segments.push(`«${nickname}»`);
       } else {
         segments.push(nickname);
@@ -125,8 +124,6 @@ class NameGeneratorService {
 
     if (lastName) {
       segments.push(lastName);
-    } else if (clan) {
-      segments.push(clan);
     }
 
     return segments.length ? segments.join(' ') : this.#fallbackName();
@@ -167,7 +164,7 @@ class NameGeneratorService {
   }
 
   /**
-   * @param {'firstName'|'lastName'|'clan'|'nickname'} type
+   * @param {'firstName'|'lastName' |'nickname'} type
    * @param {{ race: string|null, subrace: string|null, gender: string|null, age: string|null }} context
    * @returns {string|null}
    */

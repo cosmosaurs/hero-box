@@ -256,8 +256,7 @@
     "nameType": {
       "firstName": "First Name",
       "lastName": "Last Name",
-      "nickname": "Nickname",
-      "clan": "Clan Name"
+      "nickname": "Nickname"
     },
 
     "gender": {
