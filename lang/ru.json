@@ -212,6 +212,9 @@
         "nicknameSettings": "Прозвище",
         "nicknameChance": "Шанс на прозвище",
         "nicknameOnlyChance": "Шанс быть только с прозвищем"
+        "nameSettings": "Настройки имени",
+        "noLastNameChance": "Шанс без фамилии",
+        "genderAny": "Любой"
       },
       "btn": {
         "addMore": "Добавить",
