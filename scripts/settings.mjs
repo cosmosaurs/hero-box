@@ -66,6 +66,22 @@ export function registerSettings() {
     default: '',
   });
 
+  game.settings.register(MODULE_ID, SETTINGS.NICKNAME_CHANCE, {
+    name: 'Nickname Chance',
+    scope: 'client',
+    config: false,
+    type: Number,
+    default: 50,
+  });
+
+  game.settings.register(MODULE_ID, SETTINGS.NICKNAME_ONLY_CHANCE, {
+    name: 'Nickname Only Chance',
+    scope: 'client',
+    config: false,
+    type: Number,
+    default: 0,
+  });
+
   // add the button in module settings to open the data manager
   game.settings.registerMenu(MODULE_ID, 'dataManagerMenu', {
     name: 'cs-hero-box.settings.dataManager.name',
