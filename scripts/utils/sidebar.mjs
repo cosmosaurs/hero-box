@@ -22,6 +22,7 @@ export function buildSidebarCategories(options = {}) {
     hideAge = false,
     hideSubrace = false,
     hideRole = false,
+    hideOther = false,
     typeOptions = [],
   } = options;
 
@@ -148,6 +149,24 @@ export function buildSidebarCategories(options = {}) {
         icon: 'fa-briefcase',
         collapsible: true,
         tags: roles.filter(t => t.count > 0 || showCategoryFilter),
+      };
+    }
+  }
+
+  if (!hideOther) {
+    const others = tag.getOther().map(t => ({
+      id: t.id,
+      label: tag.getLabel(t.id),
+      count: tagCounts.get(t.id) ?? 0,
+      isActive: activeTagsSet.has(t.id),
+    }));
+
+    if (others.some(t => t.count > 0) || showCategoryFilter) {
+      categories.other = {
+        label: game.i18n.localize('cs-hero-box.form.labels.other'),
+        icon: 'fa-ellipsis-h',
+        collapsible: true,
+        tags: others.filter(t => t.count > 0 || showCategoryFilter),
       };
     }
   }

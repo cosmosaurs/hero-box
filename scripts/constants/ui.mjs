@@ -5,6 +5,7 @@
 export const UI = Object.freeze({
   DEBOUNCE_DELAY: 300,
   NICKNAME_CHANCE: 0.5,
+  NICKNAME_ONLY_CHANCE: 0.0,
 });
 
 export const NAME_TYPE = Object.freeze({

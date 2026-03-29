@@ -142,7 +142,9 @@ class ActorService {
       }
     }
 
-    const name = nameGenerator.generate(imageData.tags);
+    const nicknameChance = (criteria.nicknameChance ?? 50) / 100;
+    const nicknameOnlyChance = (criteria.nicknameOnlyChance ?? 0) / 100;
+    const name = nameGenerator.generate(imageData.tags, nicknameChance, nicknameOnlyChance);
     const scale = imageData.scale ?? 1;
 
     token.updateSource({
@@ -294,6 +296,8 @@ class ActorService {
           selectedImageUuids: input.selectedImageUuids ?? [],
           mode: isRandom ? TOKEN_MODE.RANDOM : TOKEN_MODE.FIXED,
           fixedImageUuid: null,
+          nicknameChance: input.nicknameChance ?? 50,
+          nicknameOnlyChance: input.nicknameOnlyChance ?? 0,
         },
       },
     };
@@ -308,7 +312,9 @@ class ActorService {
       };
     } else {
       const imageTags = imageData.tags ?? [];
-      const name = nameGenerator.generate(imageTags);
+      const nicknameChance = (input.nicknameChance ?? 50) / 100;
+      const nicknameOnlyChance = (input.nicknameOnlyChance ?? 0) / 100;
+      const name = nameGenerator.generate(imageTags, nicknameChance, nicknameOnlyChance);
       const scale = imageData.scale ?? 1;
 
       actorData.name = name;

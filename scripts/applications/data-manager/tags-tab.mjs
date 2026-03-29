@@ -67,6 +67,7 @@ export class TagsTab {
       hideAge: true,
       hideSubrace: true,
       hideRole: true,
+      hideOther: true,
     });
 
     return {
