@@ -271,9 +271,49 @@
 
 .cs-hero-box-form__gender-btn.active,
 .cs-hero-box-form__segment-btn.active {
-  background: var(--cs-hero-box-bg-primary);
-  color: var(--color-border-highlight);
+  background: rgba(255, 128, 0, 0.15);
+  color: var(--cs-hero-box-text-primary);
   font-weight: bold;
+  text-shadow: 0 0 8px rgba(255, 128, 0, 0.6);
+}
+
+.cs-hero-box-form__age-buttons {
+  display: flex;
+  border: 1px solid var(--cs-hero-box-border-color);
+  border-radius: var(--cs-hero-box-radius-md);
+  overflow: hidden;
+  margin-top: var(--cs-hero-box-spacing-xs);
+}
+
+.cs-hero-box-form__age-btn {
+  flex: 1;
+  padding: var(--cs-hero-box-spacing-xs) var(--cs-hero-box-spacing-sm);
+  background: var(--cs-hero-box-bg-secondary);
+  border: none;
+  border-right: 1px solid var(--cs-hero-box-border-color);
+  cursor: pointer;
+  font-size: var(--cs-hero-box-font-size-lg);
+  color: var(--cs-hero-box-text-muted);
+  transition: all var(--cs-hero-box-transition-fast);
+  text-align: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.cs-hero-box-form__age-btn:last-child {
+  border-right: none;
+}
+
+.cs-hero-box-form__age-btn:hover {
+  background: var(--cs-hero-box-bg-hover);
+  color: var(--cs-hero-box-text-secondary);
+}
+
+.cs-hero-box-form__age-btn.active {
+  background: rgba(255, 128, 0, 0.15);
+  color: var(--cs-hero-box-text-primary);
+  text-shadow: 0 0 8px rgba(255, 128, 0, 0.6);
 }
 
 .cs-hero-box-form__slider-group {

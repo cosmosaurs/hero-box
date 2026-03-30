@@ -130,6 +130,7 @@ export class ActorConfig extends BaseFormApplication {
     this.#bindRaceSearch();
     this.#bindAccordions();
     this.#bindGenderButtons();
+    this.#bindAgeButtons();
     this.#bindModeButtons();
   }
 
@@ -333,7 +334,6 @@ export class ActorConfig extends BaseFormApplication {
     const raceTags = this.#raceTags.map(t => {
       const isSelected = state.race.includes(t.id);
       const subraces = tag.getSubraces(t.id);
-
       return {
         id: t.id,
         label: tag.getLabel(t.id),
@@ -365,6 +365,14 @@ export class ActorConfig extends BaseFormApplication {
       { value: 'f', label: tag.getLabel('f'), isSelected: selectedGender === 'f' },
     ];
 
+    const ageIcons = { c: 'fa-baby', t: 'fa-child', y: 'fa-person', a: 'fa-regular fa-person', o: 'fa-person-cane' };
+    const ageTags = Object.entries(AGE_TAGS).map(([key, id]) => ({
+      id,
+      label: tag.getLabel(id),
+      icon: ageIcons[id] ?? 'fa-user',
+      isSelected: state.age.includes(id),
+    }));
+
     return {
       selectionMode: this.#selectionMode,
       isTagMode,
@@ -374,7 +382,7 @@ export class ActorConfig extends BaseFormApplication {
       genderOptions,
       selectedGender,
       selectedGenderLabel,
-      ageTags: this.#buildCheckboxOptions('age', AGE_TAGS, state.age),
+      ageTags,
       roleTags: this.#roleTags.map(t => ({
         id: t.id,
         label: tag.getLabel(t.id),
@@ -410,12 +418,14 @@ export class ActorConfig extends BaseFormApplication {
       sourceActor: state.sourceActor,
       selectedImages: this.#selectedImages,
       hasSelectedImages: this.#selectedImages.length > 0,
+      isEditing: !!this.#actor,
       buttons: [
         {
           type: 'button',
-          icon: 'fa-solid fa-wand-magic-sparkles',
+          icon: 'fa-solid fa-user',
           label: this.#actor ? 'cs-hero-box.form.btn.update' : 'cs-hero-box.form.btn.generate',
-          action: 'generate'
+          action: 'generate',
+          cssClass: 'cs-hero-box-form__generate-btn',
         },
       ],
     };
@@ -525,9 +535,7 @@ export class ActorConfig extends BaseFormApplication {
 
     this.#formState.race = [];
     for (const cb of this.querySelectorAll('input[name^="race."]')) {
-      if (cb.checked) {
-        this.#formState.race.push(cb.name.replace('race.', ''));
-      }
+      if (cb.checked) this.#formState.race.push(cb.name.replace('race.', ''));
     }
 
     const validSubraces = new Set();
@@ -540,11 +548,8 @@ export class ActorConfig extends BaseFormApplication {
       const parts = cb.name.replace('subrace.', '').split('.');
       const raceId = parts[0];
       const subraceId = parts[1];
-
       if (cb.checked && validSubraces.has(subraceId)) {
-        if (!this.#formState.subrace[raceId]) {
-          this.#formState.subrace[raceId] = [];
-        }
+        if (!this.#formState.subrace[raceId]) this.#formState.subrace[raceId] = [];
         this.#formState.subrace[raceId].push(subraceId);
       }
     }
@@ -554,17 +559,13 @@ export class ActorConfig extends BaseFormApplication {
     this.#formState.gender = genderVal === 'any' ? [] : [genderVal];
 
     this.#formState.age = [];
-    for (const cb of this.querySelectorAll('input[name^="age."]')) {
-      if (cb.checked) {
-        this.#formState.age.push(cb.name.replace('age.', ''));
-      }
+    for (const btn of this.querySelectorAll('.cs-hero-box-form__age-btn.active')) {
+      this.#formState.age.push(btn.dataset.age);
     }
 
     this.#formState.role = [];
     for (const cb of this.querySelectorAll('input[name^="role."]')) {
-      if (cb.checked) {
-        this.#formState.role.push(cb.name.replace('role.', ''));
-      }
+      if (cb.checked) this.#formState.role.push(cb.name.replace('role.', ''));
     }
 
     this.#formState.other = [];
@@ -766,5 +767,22 @@ export class ActorConfig extends BaseFormApplication {
     try {
       setSetting(SETTINGS.COLLAPSED_ACTOR_CONFIG, expanded);
     } catch {}
+  }
+
+  #bindAgeButtons() {
+    const buttons = this.querySelectorAll('.cs-hero-box-form__age-btn');
+    for (const btn of buttons) {
+      this.addEvent(btn, 'click', () => {
+        btn.classList.toggle('active');
+        const ageId = btn.dataset.age;
+        if (btn.classList.contains('active')) {
+          if (!this.#formState.age.includes(ageId)) {
+            this.#formState.age.push(ageId);
+          }
+        } else {
+          this.#formState.age = this.#formState.age.filter(a => a !== ageId);
+        }
+      });
+    }
   }
 }

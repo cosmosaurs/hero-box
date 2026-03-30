@@ -81,12 +81,14 @@
         </div>
       </div>
 
-      <div class="cs-hero-box-form__section cs-hero-box-form__section--static" data-section-id="gender">
-        <div class="cs-hero-box-form__section-header cs-hero-box-form__section-header--static">
+      <div class="cs-hero-box-form__section" data-section-id="gender">
+        <div class="cs-hero-box-form__section-header">
           <h4>
             <i class="fas fa-venus-mars"></i>
             {{localize "cs-hero-box.form.labels.gender"}}
+            {{#if selectedGenderLabel}}<span class="cs-hero-box-form__badge">{{selectedGenderLabel}}</span>{{/if}}
           </h4>
+          <i class="fas fa-chevron-down cs-hero-box-form__section-toggle"></i>
         </div>
         <div class="cs-hero-box-form__section-content">
           <div class="cs-hero-box-form__gender-buttons">
@@ -114,12 +116,16 @@
           <i class="fas fa-chevron-down cs-hero-box-form__section-toggle"></i>
         </div>
         <div class="cs-hero-box-form__section-content">
-          <div class="cs-hero-box-form__checkbox-group">
+          <div class="cs-hero-box-form__age-buttons">
             {{#each ageTags}}
-              <label class="cs-hero-box-form__checkbox">
-                <input type="checkbox" name="age.{{id}}" {{#if isSelected}}checked{{/if}} />
-                <span>{{label}}</span>
-              </label>
+              <button 
+                type="button" 
+                class="cs-hero-box-form__age-btn {{#if isSelected}}active{{/if}}"
+                data-age="{{id}}"
+                data-tooltip="{{label}}"
+              >
+                <i class="fas {{icon}}"></i>
+              </button>
             {{/each}}
           </div>
         </div>
