@@ -188,13 +188,45 @@
 }
 
 .cs-hero-box-form__checkbox-group {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--cs-hero-box-spacing-sm) var(--cs-hero-box-spacing-lg);
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--cs-hero-box-spacing-xs);
   padding-top: var(--cs-hero-box-spacing-xs);
 }
 
-.cs-hero-box-form__checkbox,
+.cs-hero-box-form__checkbox-group .cs-hero-box-form__checkbox {
+  justify-content: center;
+}
+
+.cs-hero-box-form__checkbox {
+  display: flex;
+  align-items: center;
+  padding: var(--cs-hero-box-spacing-xs) var(--cs-hero-box-spacing-sm);
+  border: 1px solid transparent;
+  border-radius: var(--cs-hero-box-radius-sm);
+  background: var(--cs-hero-box-bg-secondary);
+  cursor: pointer;
+  font-size: var(--cs-hero-box-font-size-md);
+  color: var(--cs-hero-box-text-secondary);
+  transition: all var(--cs-hero-box-transition-fast);
+  user-select: none;
+}
+
+.cs-hero-box-form__checkbox:hover {
+  background: var(--cs-hero-box-bg-hover);
+  color: var(--cs-hero-box-text-primary);
+}
+
+.cs-hero-box-form__checkbox.active {
+  background: rgba(255, 128, 0, 0.15);
+  color: var(--cs-hero-box-text-primary);
+  text-shadow: 0 0 8px rgba(255, 128, 0, 0.6);
+}
+
+.cs-hero-box-form__checkbox input {
+  display: none;
+}
+
 .cs-hero-box-form__radio {
   display: flex;
   align-items: center;
@@ -203,15 +235,14 @@
   color: var(--cs-hero-box-text-secondary);
 }
 
-.cs-hero-box-form__checkbox input,
 .cs-hero-box-form__radio input {
   margin: 0;
 }
 
 .cs-hero-box-form__race-list {
-  display: flex;
-  flex-direction: column;
-  gap: var(--cs-hero-box-spacing-sm);
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--cs-hero-box-spacing-xs);
   padding-top: var(--cs-hero-box-spacing-xs);
 }
 
@@ -221,18 +252,28 @@
   gap: var(--cs-hero-box-spacing-xs);
 }
 
+.cs-hero-box-form__race-item > .cs-hero-box-form__checkbox {
+  width: 100%;
+  justify-content: center;
+}
+
 .cs-hero-box-form__subraces {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--cs-hero-box-spacing-xs) var(--cs-hero-box-spacing-lg);
-  margin-left: var(--cs-hero-box-spacing-xl);
-  padding-left: var(--cs-hero-box-spacing-sm);
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--cs-hero-box-spacing-xs);
+  margin-left: var(--cs-hero-box-spacing-sm);
+  padding-left: var(--cs-hero-box-spacing-xs);
   border-left: 2px solid var(--cs-hero-box-border-color);
 }
 
 .cs-hero-box-form__checkbox--subrace {
-  font-size: var(--cs-hero-box-font-size-md);
+  font-size: var(--cs-hero-box-font-size-sm);
+  padding: 2px var(--cs-hero-box-spacing-xs);
+}
+
+.cs-hero-box-form__checkbox--subrace:not(.active) {
   color: var(--cs-hero-box-text-muted);
+  background: var(--cs-hero-box-bg-tertiary);
 }
 
 .cs-hero-box-form__gender-buttons,

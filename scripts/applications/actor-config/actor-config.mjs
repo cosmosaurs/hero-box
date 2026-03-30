@@ -123,8 +123,8 @@ export class ActorConfig extends BaseFormApplication {
   _onRender(context, options) {
     super._onRender(context, options);
     this.#dragDrop.forEach(d => d.bind(this.element));
-    this.#bindRaceCheckboxes();
-    this.#bindSubraceAutoSelect();
+    this.#bindChipToggles();
+    this.#bindRaceChips();
     this.#bindDropZoneEvents();
     this.#bindNicknameSliders();
     this.#bindRaceSearch();
@@ -207,37 +207,6 @@ export class ActorConfig extends BaseFormApplication {
         const value = btn.dataset.modeValue;
         if (hiddenInput) hiddenInput.value = value;
         this.#formState.mode = value;
-      });
-    }
-  }
-
-  #bindRaceCheckboxes() {
-    const raceCheckboxes = this.querySelectorAll('input[data-race-id]');
-    for (const checkbox of raceCheckboxes) {
-      this.addEvent(checkbox, 'change', (e) => {
-        const raceId = e.target.dataset.raceId;
-        const subraceContainer = this.querySelector(`[data-subrace-parent="${raceId}"]`);
-        if (subraceContainer) {
-          subraceContainer.style.display = e.target.checked ? '' : 'none';
-          if (!e.target.checked) {
-            subraceContainer.querySelectorAll('input[type="checkbox"]').forEach(cb => cb.checked = false);
-          }
-        }
-      });
-    }
-  }
-
-  #bindSubraceAutoSelect() {
-    const subraceCheckboxes = this.querySelectorAll('input[data-parent-race]');
-    for (const cb of subraceCheckboxes) {
-      this.addEvent(cb, 'change', (e) => {
-        if (!e.target.checked) return;
-        const parentRaceId = e.target.dataset.parentRace;
-        const raceCheckbox = this.querySelector(`input[data-race-id="${parentRaceId}"]`);
-        if (raceCheckbox && !raceCheckbox.checked) {
-          raceCheckbox.checked = true;
-          raceCheckbox.dispatchEvent(new Event('change', { bubbles: true }));
-        }
       });
     }
   }
@@ -785,4 +754,77 @@ export class ActorConfig extends BaseFormApplication {
       });
     }
   }
+
+  #bindChipToggles() {
+    const chips = this.querySelectorAll('.cs-hero-box-form__checkbox-group .cs-hero-box-form__checkbox');
+    for (const chip of chips) {
+      const input = chip.querySelector('input[type="checkbox"]');
+      if (!input) continue;
+
+      if (input.checked) chip.classList.add('active');
+
+      this.addEvent(chip, 'click', (e) => {
+        e.preventDefault();
+        input.checked = !input.checked;
+        chip.classList.toggle('active', input.checked);
+      });
+    }
+  }
+
+  #bindRaceChips() {
+    const raceChips = this.querySelectorAll('.cs-hero-box-form__race-item > .cs-hero-box-form__checkbox');
+    for (const chip of raceChips) {
+      const input = chip.querySelector('input[data-race-id]');
+      if (!input) continue;
+
+      if (input.checked) chip.classList.add('active');
+
+      this.addEvent(chip, 'click', (e) => {
+        e.preventDefault();
+        input.checked = !input.checked;
+        chip.classList.toggle('active', input.checked);
+
+        const raceId = input.dataset.raceId;
+        const subraceContainer = this.querySelector(`[data-subrace-parent="${raceId}"]`);
+        if (subraceContainer) {
+          subraceContainer.style.display = input.checked ? '' : 'none';
+          if (!input.checked) {
+            subraceContainer.querySelectorAll('.cs-hero-box-form__checkbox').forEach(sub => {
+              const subInput = sub.querySelector('input');
+              if (subInput) subInput.checked = false;
+              sub.classList.remove('active');
+            });
+          }
+        }
+      });
+    }
+
+    const subraceChips = this.querySelectorAll('.cs-hero-box-form__checkbox--subrace');
+    for (const chip of subraceChips) {
+      const input = chip.querySelector('input');
+      if (!input) continue;
+
+      if (input.checked) chip.classList.add('active');
+
+      this.addEvent(chip, 'click', (e) => {
+        e.preventDefault();
+        input.checked = !input.checked;
+        chip.classList.toggle('active', input.checked);
+
+        if (input.checked) {
+          const parentRaceId = input.dataset.parentRace;
+          const raceCheckbox = this.querySelector(`input[data-race-id="${parentRaceId}"]`);
+          const raceChip = raceCheckbox?.closest('.cs-hero-box-form__checkbox');
+          if (raceCheckbox && !raceCheckbox.checked) {
+            raceCheckbox.checked = true;
+            if (raceChip) raceChip.classList.add('active');
+            const subraceContainer = this.querySelector(`[data-subrace-parent="${parentRaceId}"]`);
+            if (subraceContainer) subraceContainer.style.display = '';
+          }
+        }
+      });
+    }
+  }
+
+
 }
