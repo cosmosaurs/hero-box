@@ -90,6 +90,22 @@ export function registerSettings() {
     default: 0,
   });
 
+  game.settings.register(MODULE_ID, SETTINGS.COLLAPSED_ACTOR_CONFIG, {
+    name: 'Collapsed Actor Config Sections',
+    scope: 'client',
+    config: false,
+    type: Array,
+    default: [],
+  });
+
+  game.settings.register(MODULE_ID, SETTINGS.COLLAPSED_DATA_MANAGER, {
+    name: 'Collapsed Data Manager Groups',
+    scope: 'client',
+    config: false,
+    type: Object,
+    default: {},
+  });
+  
   // add the button in module settings to open the data manager
   game.settings.registerMenu(MODULE_ID, 'dataManagerMenu', {
     name: 'cs-hero-box.settings.dataManager.name',
