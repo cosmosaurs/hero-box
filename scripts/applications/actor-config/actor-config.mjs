@@ -24,7 +24,7 @@ export class ActorConfig extends BaseFormApplication {
       minimizable: true,
     },
     position: {
-      width: 450,
+      width: 500,
       height: 'auto',
     },
     actions: {
@@ -300,22 +300,28 @@ export class ActorConfig extends BaseFormApplication {
     this.#loadTagsIfNeeded();
     const state = this.#formState;
 
-    const raceTags = this.#raceTags.map(t => {
-      const isSelected = state.race.includes(t.id);
-      const subraces = tag.getSubraces(t.id);
-      return {
-        id: t.id,
-        label: tag.getLabel(t.id),
-        isSelected,
-        hasSubraces: subraces.length > 0,
-        showSubraces: isSelected && subraces.length > 0,
-        subraces: subraces.map(s => ({
-          id: s.id,
-          label: tag.getLabel(s.id),
-          isSelected: state.subrace[t.id]?.includes(s.id) ?? false,
-        })),
-      };
-    }).sort((a, b) => a.label.localeCompare(b.label));
+    const { tagIndex } = await import('../../services/index.mjs');
+    const stats = tagIndex.getStats();
+    const tagCounts = stats.tagCounts;
+
+    const raceTags = this.#raceTags
+      .filter(t => (tagCounts.get(t.id) ?? 0) > 0)
+      .map(t => {
+        const isSelected = state.race.includes(t.id);
+        const subraces = tag.getSubraces(t.id).filter(s => (tagCounts.get(s.id) ?? 0) > 0);
+        return {
+          id: t.id,
+          label: tag.getLabel(t.id),
+          isSelected,
+          hasSubraces: subraces.length > 0,
+          showSubraces: isSelected && subraces.length > 0,
+          subraces: subraces.map(s => ({
+            id: s.id,
+            label: tag.getLabel(s.id),
+            isSelected: state.subrace[t.id]?.includes(s.id) ?? false,
+          })),
+        };
+      }).sort((a, b) => a.label.localeCompare(b.label));
 
     const isTagMode = this.#selectionMode === SELECTION_MODE.TAG;
     const isImageMode = this.#selectionMode === SELECTION_MODE.IMAGE;
@@ -334,13 +340,21 @@ export class ActorConfig extends BaseFormApplication {
       { value: 'f', label: tag.getLabel('f'), isSelected: selectedGender === 'f' },
     ];
 
-    const ageIcons = { c: 'fa-baby', t: 'fa-child', y: 'fa-person', a: 'fa-regular fa-person', o: 'fa-person-cane' };
+    const ageIcons = { c: 'fa-baby', t: 'fa-child', y: 'fa-person', a: 'fa-user', o: 'fa-person-cane' };
     const ageTags = Object.entries(AGE_TAGS).map(([key, id]) => ({
       id,
       label: tag.getLabel(id),
       icon: ageIcons[id] ?? 'fa-user',
       isSelected: state.age.includes(id),
     }));
+
+    const roleTagsFiltered = this.#roleTags
+      .filter(t => (tagCounts.get(t.id) ?? 0) > 0)
+      .map(t => ({
+        id: t.id,
+        label: tag.getLabel(t.id),
+        isSelected: state.role.includes(t.id),
+      }));
 
     return {
       selectionMode: this.#selectionMode,
@@ -352,11 +366,7 @@ export class ActorConfig extends BaseFormApplication {
       selectedGender,
       selectedGenderLabel,
       ageTags,
-      roleTags: this.#roleTags.map(t => ({
-        id: t.id,
-        label: tag.getLabel(t.id),
-        isSelected: state.role.includes(t.id),
-      })),
+      roleTags: roleTagsFiltered,
       otherTags: otherTagsList.map(t => ({
         id: t.id,
         label: tag.getLabel(t.id),
