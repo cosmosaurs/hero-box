@@ -183,7 +183,7 @@ class NameGeneratorService {
   }
 
   /**
-   * @param {'firstName'|'lastName'|'clan'|'nickname'} type
+   * @param {'firstName'|'lastName' |'nickname'} type
    * @param {{ race: string|null, subrace: string|null, gender: string|null, age: string|null }} context
    * @returns {string|null}
    */

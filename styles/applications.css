@@ -83,9 +83,6 @@
 }
 
 .cs-hero-box-data-sources .cs-hero-box-hint__wiki {
-  display: flex;
-  align-items: flex-start;
-  gap: var(--cs-hero-box-spacing-sm);
   margin: 0 0 var(--cs-hero-box-spacing-md) 0;
 }
 
