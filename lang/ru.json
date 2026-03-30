@@ -46,7 +46,7 @@
     },
 
     "docs": {
-      "contentPacksHint": "Дополнительные модули дают изображения, теги и наборы имён — см. <a href=\"{url}\" target=\"_blank\" rel=\"noopener noreferrer\"> модули-расширения</a>."
+      "contentPacksHint": "<a href=\"{url}\" target=\"_blank\" rel=\"noopener noreferrer\">Модули-расширения</a> дают изображения, теги и наборы имён."
     },
 
     "dataManager": {

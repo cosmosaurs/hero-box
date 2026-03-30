@@ -20,7 +20,7 @@
   padding: var(--cs-hero-box-spacing-sm) var(--cs-hero-box-spacing-md);
   background: var(--cs-hero-box-bg-secondary);
   border: none;
-  border-right: 1px solid var(--cs-hero-box-border-color);
+  border-radius: 0;
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -31,8 +31,8 @@
   transition: all var(--cs-hero-box-transition-fast);
 }
 
-.cs-hero-box-form__mode-tab:last-child {
-  border-right: none;
+.cs-hero-box-form__mode-tab:not(:last-child) {
+  border-inline-end: 1px solid var(--cs-hero-box-border-color);
 }
 
 .cs-hero-box-form__mode-tab:hover {
@@ -160,7 +160,6 @@
   color: var(--cs-hero-box-text-primary);
   font-size: var(--cs-hero-box-font-size-xs);
   font-weight: bold;
-  text-shadow: 0 0 6px rgba(255, 128, 0, 0.4);
 }
 
 .cs-hero-box-form__race-search-wrap {
@@ -220,7 +219,6 @@
 .cs-hero-box-form__checkbox.active {
   background: rgba(255, 128, 0, 0.15);
   color: var(--cs-hero-box-text-primary);
-  text-shadow: 0 0 8px rgba(255, 128, 0, 0.6);
 }
 
 .cs-hero-box-form__checkbox input {
@@ -240,13 +238,13 @@
 }
 
 .cs-hero-box-form__race-list {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: var(--cs-hero-box-spacing-xs);
-  padding-top: var(--cs-hero-box-spacing-xs);
+  columns: 2;
+  column-gap: var(--cs-hero-box-spacing-xs);
+  padding-block-start: var(--cs-hero-box-spacing-xs);
 }
 
 .cs-hero-box-form__race-item {
+  margin-block-end: var(--cs-hero-box-spacing-xs);
   display: flex;
   flex-direction: column;
   gap: var(--cs-hero-box-spacing-xs);
@@ -261,9 +259,8 @@
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: var(--cs-hero-box-spacing-xs);
-  margin-left: var(--cs-hero-box-spacing-sm);
-  padding-left: var(--cs-hero-box-spacing-xs);
-  border-left: 2px solid var(--cs-hero-box-border-color);
+  padding-inline-start: var(--cs-hero-box-spacing-xs);
+  border-inline-start: 2px solid var(--cs-hero-box-border-color);
 }
 
 .cs-hero-box-form__checkbox--subrace {
@@ -291,7 +288,7 @@
   padding: var(--cs-hero-box-spacing-xs) var(--cs-hero-box-spacing-sm);
   background: var(--cs-hero-box-bg-secondary);
   border: none;
-  border-right: 1px solid var(--cs-hero-box-border-color);
+  border-radius: 0;
   cursor: pointer;
   font-size: var(--cs-hero-box-font-size-md);
   color: var(--cs-hero-box-text-muted);
@@ -299,9 +296,10 @@
   text-align: center;
 }
 
-.cs-hero-box-form__gender-btn:last-child,
-.cs-hero-box-form__segment-btn:last-child {
-  border-right: none;
+.cs-hero-box-form__gender-btn:not(:last-child),
+.cs-hero-box-form__segment-btn:not(:last-child),
+.cs-hero-box-form__age-btn:not(:last-child) {
+  border-inline-end: 1px solid var(--cs-hero-box-border-color);
 }
 
 .cs-hero-box-form__gender-btn:hover,
@@ -315,8 +313,7 @@
   background: rgba(255, 128, 0, 0.15);
   color: var(--cs-hero-box-text-primary);
   font-weight: bold;
-  text-shadow: 0 0 8px rgba(255, 128, 0, 0.6);
-}
+} 
 
 .cs-hero-box-form__age-buttons {
   display: flex;
@@ -331,7 +328,7 @@
   padding: var(--cs-hero-box-spacing-xs) var(--cs-hero-box-spacing-sm);
   background: var(--cs-hero-box-bg-secondary);
   border: none;
-  border-right: 1px solid var(--cs-hero-box-border-color);
+  border-radius: 0;
   cursor: pointer;
   font-size: var(--cs-hero-box-font-size-lg);
   color: var(--cs-hero-box-text-muted);
@@ -342,10 +339,6 @@
   justify-content: center;
 }
 
-.cs-hero-box-form__age-btn:last-child {
-  border-right: none;
-}
-
 .cs-hero-box-form__age-btn:hover {
   background: var(--cs-hero-box-bg-hover);
   color: var(--cs-hero-box-text-secondary);
@@ -354,7 +347,6 @@
 .cs-hero-box-form__age-btn.active {
   background: rgba(255, 128, 0, 0.15);
   color: var(--cs-hero-box-text-primary);
-  text-shadow: 0 0 8px rgba(255, 128, 0, 0.6);
 }
 
 .cs-hero-box-form__slider-group {

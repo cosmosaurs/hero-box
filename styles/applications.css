@@ -496,16 +496,10 @@
 .cs-hero-box-data-manager__tag.active {
   background: rgba(255, 128, 0, 0.15);
   color: var(--cs-hero-box-text-primary);
-  text-shadow: 0 0 8px rgba(255, 128, 0, 0.6);
-}
-
-.cs-hero-box-data-manager__tag.active .cs-hero-box-data-manager__tag-name {
-  text-shadow: 0 0 8px rgba(255, 128, 0, 0.6);
 }
 
 .cs-hero-box-data-manager__tag.active .cs-hero-box-data-manager__tag-count {
   color: var(--cs-hero-box-text-primary);
-  text-shadow: 0 0 6px rgba(255, 128, 0, 0.4);
 }
 
 .cs-hero-box-data-manager__tag-count {
@@ -1025,7 +1019,7 @@
   padding: var(--cs-hero-box-spacing-sm);
   background: var(--cs-hero-box-bg-secondary);
   border: none;
-  border-right: 1px solid var(--cs-hero-box-border-color);
+  border-radius: 0;
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -1035,12 +1029,8 @@
   color: var(--cs-hero-box-text-muted);
 }
 
-.cs-hero-box-image-import__tab:last-child {
-  border-right: none;
-}
-
-.cs-hero-box-image-import__tab:first-child {
-  border-left: none;
+.cs-hero-box-image-import__tab:not(:last-child) {
+  border-inline-end: 1px solid var(--cs-hero-box-border-color);
 }
 
 .cs-hero-box-image-import__tab.active {
