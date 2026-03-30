@@ -2,10 +2,11 @@
  * @fileoverview Hero Box actor wizard: random vs fixed token, tag or explicit image selection.
  */
 
-import { MODULE_ID, FLAGS, TOKEN_MODE, SELECTION_MODE, PATHS } from '../../constants/index.mjs';
+import { MODULE_ID, FLAGS, TOKEN_MODE, SELECTION_MODE, PATHS, SETTINGS } from '../../constants/index.mjs';
 import { GENDER_TAGS, AGE_TAGS } from '../../constants/tags.mjs';
 import { logger, getFlag } from '../../utils/index.mjs';
 import { tag, imagePicker } from '../../services/index.mjs';
+import { getSetting, setSetting } from '../../settings.mjs';
 import { BaseFormApplication } from '../base/base.mjs';
 
 export class ActorConfig extends BaseFormApplication {
@@ -123,7 +124,13 @@ export class ActorConfig extends BaseFormApplication {
     super._onRender(context, options);
     this.#dragDrop.forEach(d => d.bind(this.element));
     this.#bindRaceCheckboxes();
+    this.#bindSubraceAutoSelect();
     this.#bindDropZoneEvents();
+    this.#bindNicknameSliders();
+    this.#bindRaceSearch();
+    this.#bindAccordions();
+    this.#bindGenderButtons();
+    this.#bindModeButtons();
   }
 
   /** CSS `dragover` class on the source-actor drop zone. */
@@ -138,20 +145,178 @@ export class ActorConfig extends BaseFormApplication {
 
     this.addEvent(dropZone, 'dragleave', (e) => {
       const rect = dropZone.getBoundingClientRect();
-      const x = e.clientX;
-      const y = e.clientY;
-
-      if (x < rect.left || x > rect.right || y < rect.top || y > rect.bottom) {
+      if (e.clientX < rect.left || e.clientX > rect.right || e.clientY < rect.top || e.clientY > rect.bottom) {
         dropZone.classList.remove('dragover');
       }
     });
 
-    this.addEvent(dropZone, 'drop', () => {
-      dropZone.classList.remove('dragover');
-    });
+    this.addEvent(dropZone, 'drop', () => dropZone.classList.remove('dragover'));
+    this.addEvent(dropZone, 'dragover', (e) => e.preventDefault());
+  }
 
-    this.addEvent(dropZone, 'dragover', (e) => {
-      e.preventDefault();
+  #bindAccordions() {
+    let expandedSections = null;
+    try {
+      expandedSections = getSetting(SETTINGS.COLLAPSED_ACTOR_CONFIG);
+    } catch {}
+
+    const sections = this.querySelectorAll('.cs-hero-box-form__section:not(.cs-hero-box-form__section--static)');
+    for (const section of sections) {
+      const header = section.querySelector('.cs-hero-box-form__section-header');
+      if (!header) continue;
+
+      const sectionId = section.dataset.sectionId;
+
+      if (Array.isArray(expandedSections)) {
+        section.classList.toggle('collapsed', !expandedSections.includes(sectionId));
+      } else {
+        section.classList.add('collapsed');
+      }
+
+      this.addEvent(header, 'click', (e) => {
+        if (e.target.closest('input, button, label')) return;
+        e.preventDefault();
+        section.classList.toggle('collapsed');
+        this.#saveAccordionState();
+      });
+    }
+  }
+
+  #bindGenderButtons() {
+    const buttons = this.querySelectorAll('.cs-hero-box-form__gender-btn');
+    const hiddenInput = this.querySelector('input[name="selectedGender"]');
+    for (const btn of buttons) {
+      this.addEvent(btn, 'click', () => {
+        buttons.forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        const value = btn.dataset.gender;
+        if (hiddenInput) hiddenInput.value = value;
+        this.#formState.gender = value === 'any' ? [] : [value];
+      });
+    }
+  }
+
+  #bindModeButtons() {
+    const buttons = this.querySelectorAll('.cs-hero-box-form__segment-btn[data-mode-value]');
+    const hiddenInput = this.querySelector('input[name="selectedMode"]');
+    for (const btn of buttons) {
+      this.addEvent(btn, 'click', () => {
+        buttons.forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        const value = btn.dataset.modeValue;
+        if (hiddenInput) hiddenInput.value = value;
+        this.#formState.mode = value;
+      });
+    }
+  }
+
+  #bindRaceCheckboxes() {
+    const raceCheckboxes = this.querySelectorAll('input[data-race-id]');
+    for (const checkbox of raceCheckboxes) {
+      this.addEvent(checkbox, 'change', (e) => {
+        const raceId = e.target.dataset.raceId;
+        const subraceContainer = this.querySelector(`[data-subrace-parent="${raceId}"]`);
+        if (subraceContainer) {
+          subraceContainer.style.display = e.target.checked ? '' : 'none';
+          if (!e.target.checked) {
+            subraceContainer.querySelectorAll('input[type="checkbox"]').forEach(cb => cb.checked = false);
+          }
+        }
+      });
+    }
+  }
+
+  #bindSubraceAutoSelect() {
+    const subraceCheckboxes = this.querySelectorAll('input[data-parent-race]');
+    for (const cb of subraceCheckboxes) {
+      this.addEvent(cb, 'change', (e) => {
+        if (!e.target.checked) return;
+        const parentRaceId = e.target.dataset.parentRace;
+        const raceCheckbox = this.querySelector(`input[data-race-id="${parentRaceId}"]`);
+        if (raceCheckbox && !raceCheckbox.checked) {
+          raceCheckbox.checked = true;
+          raceCheckbox.dispatchEvent(new Event('change', { bubbles: true }));
+        }
+      });
+    }
+  }
+
+  #bindNicknameSliders() {
+    this.#bindSliderPair('nicknameChance', 'nicknameChanceNum', 'nicknameChance');
+    this.#bindSliderPair('nicknameOnlyChance', 'nicknameOnlyChanceNum', 'nicknameOnlyChance');
+    this.#bindSliderPair('noLastNameChance', 'noLastNameChanceNum', 'noLastNameChance');
+  }
+
+  #bindSliderPair(rangeName, numberName, stateKey) {
+    const range = this.querySelector(`input[name="${rangeName}"][type="range"]`);
+    const number = this.querySelector(`input[name="${numberName}"]`);
+    if (range && number) {
+      this.addEvent(range, 'input', (e) => {
+        number.value = e.target.value;
+        this.#formState[stateKey] = parseInt(e.target.value) || 0;
+      });
+      this.addEvent(number, 'input', (e) => {
+        let val = Math.max(0, Math.min(100, parseInt(e.target.value) || 0));
+        range.value = val;
+        this.#formState[stateKey] = val;
+      });
+    }
+  }
+
+  #bindRaceSearch() {
+    const searchInput = this.querySelector('.cs-hero-box-form__race-search');
+    if (!searchInput) return;
+
+    this.addEvent(searchInput, 'input', (e) => {
+      const query = e.target.value.toLowerCase().trim();
+      this.#formState.raceSearchQuery = query;
+      const raceItems = this.querySelectorAll('.cs-hero-box-form__race-item');
+
+      for (const item of raceItems) {
+        const raceLabel = item.querySelector('.cs-hero-box-form__checkbox span')?.textContent?.toLowerCase() ?? '';
+        const subraceContainer = item.querySelector('.cs-hero-box-form__subraces');
+        let subraceMatch = false;
+        let matchingSubraceCount = 0;
+
+        if (subraceContainer) {
+          const subraceLabels = subraceContainer.querySelectorAll('.cs-hero-box-form__checkbox--subrace');
+          for (const subraceEl of subraceLabels) {
+            const subraceText = subraceEl.querySelector('span')?.textContent?.toLowerCase() ?? '';
+            if (query && subraceText.includes(query)) {
+              subraceMatch = true;
+              matchingSubraceCount++;
+              subraceEl.style.display = '';
+            } else if (query) {
+              subraceEl.style.display = 'none';
+            } else {
+              subraceEl.style.display = '';
+            }
+          }
+        }
+
+        const raceMatch = raceLabel.includes(query) || !query;
+
+        if (raceMatch || subraceMatch) {
+          item.style.display = '';
+          if (subraceContainer) {
+            if (subraceMatch && !raceMatch) {
+              subraceContainer.style.display = '';
+            } else if (!query) {
+              const raceCheckbox = item.querySelector('input[data-race-id]');
+              if (raceCheckbox && !raceCheckbox.checked) {
+                subraceContainer.style.display = 'none';
+              } else {
+                subraceContainer.style.display = '';
+              }
+              subraceContainer.querySelectorAll('.cs-hero-box-form__checkbox--subrace').forEach(el => {
+                el.style.display = '';
+              });
+            }
+          }
+        } else {
+          item.style.display = 'none';
+        }
+      }
     });
   }
 
@@ -186,18 +351,47 @@ export class ActorConfig extends BaseFormApplication {
     const isTagMode = this.#selectionMode === SELECTION_MODE.TAG;
     const isImageMode = this.#selectionMode === SELECTION_MODE.IMAGE;
 
+    const otherTagsList = tag.getOther();
+
+    const selectedGender = state.gender.length === 1 ? state.gender[0] : 'any';
+    let selectedGenderLabel = '';
+    if (selectedGender !== 'any') {
+      selectedGenderLabel = tag.getLabel(selectedGender);
+    }
+
+    const genderOptions = [
+      { value: 'm', label: tag.getLabel('m'), isSelected: selectedGender === 'm' },
+      { value: 'any', label: game.i18n.localize('cs-hero-box.form.labels.genderAny'), isSelected: selectedGender === 'any' },
+      { value: 'f', label: tag.getLabel('f'), isSelected: selectedGender === 'f' },
+    ];
+
     return {
       selectionMode: this.#selectionMode,
       isTagMode,
       isImageMode,
       raceTags,
-      genderTags: this.#buildCheckboxOptions('gender', GENDER_TAGS, state.gender),
+      raceSearchQuery: state.raceSearchQuery ?? '',
+      genderOptions,
+      selectedGender,
+      selectedGenderLabel,
       ageTags: this.#buildCheckboxOptions('age', AGE_TAGS, state.age),
       roleTags: this.#roleTags.map(t => ({
         id: t.id,
         label: tag.getLabel(t.id),
         isSelected: state.role.includes(t.id),
       })),
+      otherTags: otherTagsList.map(t => ({
+        id: t.id,
+        label: tag.getLabel(t.id),
+        isSelected: (state.other ?? []).includes(t.id),
+      })),
+      selectedRaceCount: state.race.length || 0,
+      selectedAgeCount: state.age.length || 0,
+      selectedRoleCount: state.role.length || 0,
+      selectedOtherCount: (state.other ?? []).length || 0,
+      nicknameChance: state.nicknameChance ?? 50,
+      nicknameOnlyChance: state.nicknameOnlyChance ?? 0,
+      noLastNameChance: state.noLastNameChance ?? 0,
       modeOptions: [
         {
           id: TOKEN_MODE.RANDOM,
@@ -212,6 +406,7 @@ export class ActorConfig extends BaseFormApplication {
           isChecked: state.mode === TOKEN_MODE.FIXED,
         },
       ],
+      selectedModeValue: state.mode,
       sourceActor: state.sourceActor,
       selectedImages: this.#selectedImages,
       hasSelectedImages: this.#selectedImages.length > 0,
@@ -325,19 +520,6 @@ export class ActorConfig extends BaseFormApplication {
     }
   }
 
-  /** Re-render on race checkbox change so subrace rows update. */
-  #bindRaceCheckboxes() {
-    const raceCheckboxes = this.querySelectorAll('input[data-race-id]');
-
-    for (const checkbox of raceCheckboxes) {
-      this.addEvent(checkbox, 'change', () => {
-        this.#syncFormState();
-        this.render();
-      });
-    }
-  }
-
-  // read all checkbox states into our form state object
   #syncFormState() {
     if (!this.element) return;
 
@@ -367,12 +549,9 @@ export class ActorConfig extends BaseFormApplication {
       }
     }
 
-    this.#formState.gender = [];
-    for (const cb of this.querySelectorAll('input[name^="gender."]')) {
-      if (cb.checked) {
-        this.#formState.gender.push(cb.name.replace('gender.', ''));
-      }
-    }
+    const genderHidden = this.querySelector('input[name="selectedGender"]');
+    const genderVal = genderHidden?.value ?? 'any';
+    this.#formState.gender = genderVal === 'any' ? [] : [genderVal];
 
     this.#formState.age = [];
     for (const cb of this.querySelectorAll('input[name^="age."]')) {
@@ -388,11 +567,20 @@ export class ActorConfig extends BaseFormApplication {
       }
     }
 
-    for (const radio of this.querySelectorAll('input[name="mode"]')) {
-      if (radio.checked) {
-        this.#formState.mode = radio.value === '0' ? TOKEN_MODE.RANDOM : TOKEN_MODE.FIXED;
-      }
+    this.#formState.other = [];
+    for (const cb of this.querySelectorAll('input[name^="other."]')) {
+      if (cb.checked) this.#formState.other.push(cb.name.replace('other.', ''));
     }
+
+    const modeHidden = this.querySelector('input[name="selectedMode"]');
+    if (modeHidden) this.#formState.mode = modeHidden.value;
+
+    const nc = this.querySelector('input[name="nicknameChance"]');
+    if (nc) this.#formState.nicknameChance = parseInt(nc.value) || 0;
+    const noc = this.querySelector('input[name="nicknameOnlyChance"]');
+    if (noc) this.#formState.nicknameOnlyChance = parseInt(noc.value) || 0;
+    const nlc = this.querySelector('input[name="noLastNameChance"]');
+    if (nlc) this.#formState.noLastNameChance = parseInt(nlc.value) || 0;
   }
 
   /**
@@ -426,14 +614,28 @@ export class ActorConfig extends BaseFormApplication {
       if (saved) return this.#normalizeFormState(saved);
     }
 
+    let nicknameChance = 50;
+    let nicknameOnlyChance = 0;
+    let noLastNameChance = 0;
+    try {
+      nicknameChance = getSetting(SETTINGS.NICKNAME_CHANCE) ?? 50;
+      nicknameOnlyChance = getSetting(SETTINGS.NICKNAME_ONLY_CHANCE) ?? 0;
+      noLastNameChance = getSetting(SETTINGS.NO_LAST_NAME_CHANCE) ?? 0;
+    } catch {}
+
     return {
       race: [],
       subrace: {},
       gender: [],
       age: [],
       role: [],
+      other: [],
       mode: TOKEN_MODE.RANDOM,
       sourceActor: null,
+      raceSearchQuery: '',
+      nicknameChance,
+      nicknameOnlyChance,
+      noLastNameChance,
     };
   }
 
@@ -445,14 +647,28 @@ export class ActorConfig extends BaseFormApplication {
       gender: saved.gender ?? [],
       age: saved.age ?? [],
       role: saved.role ?? [],
+      other: saved.other ?? [],
       mode: saved.mode ?? TOKEN_MODE.RANDOM,
       sourceActor: saved.sourceActor ?? null,
+      raceSearchQuery: saved.raceSearchQuery ?? '',
+      nicknameChance: saved.nicknameChance ?? 50,
+      nicknameOnlyChance: saved.nicknameOnlyChance ?? 0,
+      noLastNameChance: saved.noLastNameChance ?? 0,
     };
   }
 
   /** Payload for `actor.createOrUpdate` / token criteria flags. */
   #buildOutput() {
     const isImageMode = this.#selectionMode === SELECTION_MODE.IMAGE;
+    const nc = this.#formState.nicknameChance ?? 50;
+    const noc = this.#formState.nicknameOnlyChance ?? 0;
+    const nlc = this.#formState.noLastNameChance ?? 0;
+
+    try {
+      setSetting(SETTINGS.NICKNAME_CHANCE, nc);
+      setSetting(SETTINGS.NICKNAME_ONLY_CHANCE, noc);
+      setSetting(SETTINGS.NO_LAST_NAME_CHANCE, nlc);
+    } catch {}
 
     return {
       selectionMode: this.#selectionMode,
@@ -461,9 +677,13 @@ export class ActorConfig extends BaseFormApplication {
       gender: isImageMode ? [] : this.#formState.gender,
       age: isImageMode ? [] : this.#formState.age,
       role: isImageMode ? [] : this.#formState.role,
+      other: isImageMode ? [] : (this.#formState.other ?? []),
       mode: this.#formState.mode,
       sourceActor: this.#formState.sourceActor,
       selectedImageUuids: isImageMode ? this.#selectedImages.map(img => img.uuid) : [],
+      nicknameChance: nc,
+      nicknameOnlyChance: noc,
+      noLastNameChance: nlc,
     };
   }
 
@@ -528,5 +748,23 @@ export class ActorConfig extends BaseFormApplication {
     } catch (error) {
       logger.error('Failed to process dropped actor:', error);
     }
+  }
+
+  #getAccordionId(legend) {
+    const span = legend.querySelector('span');
+    return span?.textContent?.trim() ?? '';
+  }
+
+  #saveAccordionState() {
+    const expanded = [];
+    const sections = this.querySelectorAll('.cs-hero-box-form__section:not(.cs-hero-box-form__section--static)');
+    for (const section of sections) {
+      if (!section.classList.contains('collapsed')) {
+        expanded.push(section.dataset.sectionId);
+      }
+    }
+    try {
+      setSetting(SETTINGS.COLLAPSED_ACTOR_CONFIG, expanded);
+    } catch {}
   }
 }

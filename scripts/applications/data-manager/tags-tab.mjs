@@ -7,6 +7,8 @@ import { logger } from '../../utils/index.mjs';
 import { buildSidebarCategories, handleTagToggle } from '../../utils/sidebar.mjs';
 import { tag, source } from '../../services/index.mjs';
 import { sortByLabel } from '../../utils/sort.mjs';
+import { getSetting, setSetting } from '../../settings.mjs';
+import { SETTINGS } from '../../constants/settings.mjs';
 
 /** Tab logic for tag definitions; `app` is the parent DataManager. */
 export class TagsTab {
@@ -220,17 +222,23 @@ export class TagsTab {
     if (group) {
       const category = group.dataset.category;
       group.classList.toggle('collapsed');
-
       if (group.classList.contains('collapsed')) {
         this.#collapsedGroups.add(category);
       } else {
         this.#collapsedGroups.delete(category);
       }
+      this.#saveCollapsedState();
     }
   }
 
   /** Reapply `.collapsed` without transition flash after render. */
   #restoreCollapsedGroups() {
+    try {
+      const saved = getSetting(SETTINGS.COLLAPSED_DATA_MANAGER);
+      const tabCollapsed = saved?.tags ?? [];
+      this.#collapsedGroups = new Set(tabCollapsed);
+    } catch {}
+
     for (const category of this.#collapsedGroups) {
       const group = this.#app.querySelector(`.cs-hero-box-data-manager__tag-group[data-category="${category}"]`);
       if (group) {
@@ -301,5 +309,13 @@ export class TagsTab {
     }
 
     return groupedTags;
+  }
+
+  #saveCollapsedState() {
+    try {
+      const saved = getSetting(SETTINGS.COLLAPSED_DATA_MANAGER) ?? {};
+      saved.tags = Array.from(this.#collapsedGroups);
+      setSetting(SETTINGS.COLLAPSED_DATA_MANAGER, saved);
+    } catch {}
   }
 }

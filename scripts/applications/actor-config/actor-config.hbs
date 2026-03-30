@@ -20,167 +20,286 @@
     </button>
   </nav>
 
-  {{#if isTagMode}}
-    <fieldset class="cs-hero-box-form__scrollable-section">
-      <legend>{{localize "cs-hero-box.form.labels.race"}}</legend>
-      <div class="cs-hero-box-form__race-list">
-        {{#each raceTags}}
-          <div class="cs-hero-box-form__race-item">
-            <label class="cs-hero-box-form__checkbox">
-              <input 
-                type="checkbox" 
-                name="race.{{id}}" 
-                data-race-id="{{id}}"
-                {{#if isSelected}}checked{{/if}} 
-              />
-              <span>{{label}}</span>
-            </label>
-            
-            {{#if hasSubraces}}
-              <div 
-                class="cs-hero-box-form__subraces" 
-                {{#unless showSubraces}}style="display: none"{{/unless}}
-              >
-                {{#each subraces}}
-                  <label class="cs-hero-box-form__checkbox cs-hero-box-form__checkbox--subrace">
+  <div class="cs-hero-box-form__scroll-area">
+
+    {{#if isTagMode}}
+
+      <div class="cs-hero-box-form__section" data-section-id="race">
+        <div class="cs-hero-box-form__section-header">
+          <h4>
+            <i class="fas fa-users"></i>
+            {{localize "cs-hero-box.form.labels.race"}}
+            {{#if selectedRaceCount}}<span class="cs-hero-box-form__badge">{{selectedRaceCount}}</span>{{/if}}
+          </h4>
+          <i class="fas fa-chevron-down cs-hero-box-form__section-toggle"></i>
+        </div>
+        <div class="cs-hero-box-form__section-content">
+          <div class="cs-hero-box-form__race-search-wrap">
+            <input 
+              type="text" 
+              class="cs-hero-box-form__race-search" 
+              placeholder="{{localize 'cs-hero-box.dataManager.searchPlaceholder'}}" 
+              value="{{raceSearchQuery}}"
+            />
+          </div>
+          <div class="cs-hero-box-form__scrollable-section">
+            <div class="cs-hero-box-form__race-list">
+              {{#each raceTags}}
+                <div class="cs-hero-box-form__race-item">
+                  <label class="cs-hero-box-form__checkbox">
                     <input 
                       type="checkbox" 
-                      name="subrace.{{../id}}.{{id}}" 
+                      name="race.{{id}}" 
+                      data-race-id="{{id}}"
                       {{#if isSelected}}checked{{/if}} 
                     />
                     <span>{{label}}</span>
                   </label>
+                  {{#if hasSubraces}}
+                    <div 
+                      class="cs-hero-box-form__subraces" 
+                      data-subrace-parent="{{id}}"
+                      {{#unless showSubraces}}style="display: none"{{/unless}}
+                    >
+                      {{#each subraces}}
+                        <label class="cs-hero-box-form__checkbox cs-hero-box-form__checkbox--subrace" data-subrace-label="{{label}}">
+                          <input 
+                            type="checkbox" 
+                            name="subrace.{{../id}}.{{id}}" 
+                            data-parent-race="{{../id}}"
+                            {{#if isSelected}}checked{{/if}} 
+                          />
+                          <span>{{label}}</span>
+                        </label>
+                      {{/each}}
+                    </div>
+                  {{/if}}
+                </div>
+              {{/each}}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="cs-hero-box-form__section cs-hero-box-form__section--static" data-section-id="gender">
+        <div class="cs-hero-box-form__section-header cs-hero-box-form__section-header--static">
+          <h4>
+            <i class="fas fa-venus-mars"></i>
+            {{localize "cs-hero-box.form.labels.gender"}}
+          </h4>
+        </div>
+        <div class="cs-hero-box-form__section-content">
+          <div class="cs-hero-box-form__gender-buttons">
+            {{#each genderOptions}}
+              <button 
+                type="button" 
+                class="cs-hero-box-form__gender-btn {{#if isSelected}}active{{/if}}"
+                data-gender="{{value}}"
+              >
+                {{label}}
+              </button>
+            {{/each}}
+          </div>
+          <input type="hidden" name="selectedGender" value="{{selectedGender}}" />
+        </div>
+      </div>
+
+      <div class="cs-hero-box-form__section" data-section-id="age">
+        <div class="cs-hero-box-form__section-header">
+          <h4>
+            <i class="fas fa-hourglass-half"></i>
+            {{localize "cs-hero-box.form.labels.age"}}
+            {{#if selectedAgeCount}}<span class="cs-hero-box-form__badge">{{selectedAgeCount}}</span>{{/if}}
+          </h4>
+          <i class="fas fa-chevron-down cs-hero-box-form__section-toggle"></i>
+        </div>
+        <div class="cs-hero-box-form__section-content">
+          <div class="cs-hero-box-form__checkbox-group">
+            {{#each ageTags}}
+              <label class="cs-hero-box-form__checkbox">
+                <input type="checkbox" name="age.{{id}}" {{#if isSelected}}checked{{/if}} />
+                <span>{{label}}</span>
+              </label>
+            {{/each}}
+          </div>
+        </div>
+      </div>
+
+      {{#if roleTags.length}}
+        <div class="cs-hero-box-form__section" data-section-id="role">
+          <div class="cs-hero-box-form__section-header">
+            <h4>
+              <i class="fas fa-briefcase"></i>
+              {{localize "cs-hero-box.form.labels.role"}}
+              {{#if selectedRoleCount}}<span class="cs-hero-box-form__badge">{{selectedRoleCount}}</span>{{/if}}
+            </h4>
+            <i class="fas fa-chevron-down cs-hero-box-form__section-toggle"></i>
+          </div>
+          <div class="cs-hero-box-form__section-content">
+            <div class="cs-hero-box-form__scrollable-section">
+              <div class="cs-hero-box-form__checkbox-group">
+                {{#each roleTags}}
+                  <label class="cs-hero-box-form__checkbox">
+                    <input type="checkbox" name="role.{{id}}" {{#if isSelected}}checked{{/if}} />
+                    <span>{{label}}</span>
+                  </label>
                 {{/each}}
               </div>
-            {{/if}}
+            </div>
           </div>
-        {{/each}}
-      </div>
-    </fieldset>
+        </div>
+      {{/if}}
 
-    <fieldset>
-      <legend>{{localize "cs-hero-box.form.labels.gender"}}</legend>
-      <div class="cs-hero-box-form__checkbox-group">
-        {{#each genderTags}}
-          <label class="cs-hero-box-form__checkbox">
-            <input 
-              type="checkbox" 
-              name="gender.{{id}}" 
-              {{#if isSelected}}checked{{/if}}
-            />
-            <span>{{label}}</span>
-          </label>
-        {{/each}}
-      </div>
-    </fieldset>
+      {{#if otherTags.length}}
+        <div class="cs-hero-box-form__section" data-section-id="other">
+          <div class="cs-hero-box-form__section-header">
+            <h4>
+              <i class="fas fa-ellipsis-h"></i>
+              {{localize "cs-hero-box.form.labels.other"}}
+              {{#if selectedOtherCount}}<span class="cs-hero-box-form__badge">{{selectedOtherCount}}</span>{{/if}}
+            </h4>
+            <i class="fas fa-chevron-down cs-hero-box-form__section-toggle"></i>
+          </div>
+          <div class="cs-hero-box-form__section-content">
+            <div class="cs-hero-box-form__scrollable-section">
+              <div class="cs-hero-box-form__checkbox-group">
+                {{#each otherTags}}
+                  <label class="cs-hero-box-form__checkbox">
+                    <input type="checkbox" name="other.{{id}}" {{#if isSelected}}checked{{/if}} />
+                    <span>{{label}}</span>
+                  </label>
+                {{/each}}
+              </div>
+            </div>
+          </div>
+        </div>
+      {{/if}}
 
-    <fieldset>
-      <legend>{{localize "cs-hero-box.form.labels.age"}}</legend>
-      <div class="cs-hero-box-form__checkbox-group">
-        {{#each ageTags}}
-          <label class="cs-hero-box-form__checkbox">
-            <input 
-              type="checkbox" 
-              name="age.{{id}}" 
-              {{#if isSelected}}checked{{/if}}
-            />
-            <span>{{label}}</span>
-          </label>
-        {{/each}}
+      <div class="cs-hero-box-form__section" data-section-id="nameSettings">
+        <div class="cs-hero-box-form__section-header">
+          <h4>
+            <i class="fas fa-signature"></i>
+            {{localize "cs-hero-box.form.labels.nameSettings"}}
+          </h4>
+          <i class="fas fa-chevron-down cs-hero-box-form__section-toggle"></i>
+        </div>
+        <div class="cs-hero-box-form__section-content">
+          <div class="cs-hero-box-form__slider-group">
+            <label>{{localize "cs-hero-box.form.labels.nicknameChance"}}</label>
+            <div class="cs-hero-box-form__slider-row">
+              <input type="range" name="nicknameChance" min="0" max="100" value="{{nicknameChance}}" />
+              <input type="number" name="nicknameChanceNum" min="0" max="100" value="{{nicknameChance}}" class="cs-hero-box-form__slider-num" />
+            </div>
+          </div>
+          <div class="cs-hero-box-form__slider-group">
+            <label>{{localize "cs-hero-box.form.labels.nicknameOnlyChance"}}</label>
+            <div class="cs-hero-box-form__slider-row">
+              <input type="range" name="nicknameOnlyChance" min="0" max="100" value="{{nicknameOnlyChance}}" />
+              <input type="number" name="nicknameOnlyChanceNum" min="0" max="100" value="{{nicknameOnlyChance}}" class="cs-hero-box-form__slider-num" />
+            </div>
+          </div>
+          <div class="cs-hero-box-form__slider-group">
+            <label>{{localize "cs-hero-box.form.labels.noLastNameChance"}}</label>
+            <div class="cs-hero-box-form__slider-row">
+              <input type="range" name="noLastNameChance" min="0" max="100" value="{{noLastNameChance}}" />
+              <input type="number" name="noLastNameChanceNum" min="0" max="100" value="{{noLastNameChance}}" class="cs-hero-box-form__slider-num" />
+            </div>
+          </div>
+        </div>
       </div>
-    </fieldset>
 
-    {{#if roleTags.length}}
-      <fieldset class="cs-hero-box-form__scrollable-section">
-        <legend>{{localize "cs-hero-box.form.labels.role"}}</legend>
-        <div class="cs-hero-box-form__checkbox-group">
-          {{#each roleTags}}
-            <label class="cs-hero-box-form__checkbox">
-              <input 
-                type="checkbox" 
-                name="role.{{id}}" 
-                {{#if isSelected}}checked{{/if}}
-              />
-              <span>{{label}}</span>
-            </label>
+    {{/if}}
+
+    {{#if isImageMode}}
+      <div class="cs-hero-box-form__section cs-hero-box-form__section--static" data-section-id="images">
+        <div class="cs-hero-box-form__section-header cs-hero-box-form__section-header--static">
+          <h4>
+            <i class="fas fa-images"></i>
+            {{localize "cs-hero-box.form.labels.images"}}
+          </h4>
+        </div>
+        <div class="cs-hero-box-form__section-content">
+          {{#if hasSelectedImages}}
+            <div class="cs-hero-box-form__selected-images">
+              {{#each selectedImages}}
+                <div class="cs-hero-box-form__selected-image-item" data-uuid="{{uuid}}">
+                  <img src="{{url}}" alt="{{name}}" />
+                  <span class="cs-hero-box-form__selected-image-name" title="{{name}}">{{name}}</span>
+                  <button type="button" class="cs-hero-box-form__remove-image-btn" data-action="removeImage" data-uuid="{{uuid}}">
+                    <i class="fas fa-times"></i>
+                  </button>
+                </div>
+              {{/each}}
+            </div>
+            <div class="cs-hero-box-form__image-actions">
+              <button type="button" class="cs-hero-box-form__add-more-btn" data-action="pickImages">
+                <i class="fas fa-plus"></i> {{localize "cs-hero-box.form.btn.addMore"}}
+              </button>
+              <button type="button" class="cs-hero-box-form__clear-images-btn" data-action="clearImages">
+                <i class="fas fa-trash"></i> {{localize "cs-hero-box.form.btn.clearAll"}}
+              </button>
+            </div>
+          {{else}}
+            <button type="button" class="cs-hero-box-form__pick-images-btn" data-action="pickImages">
+              <i class="fas fa-images"></i> {{localize "cs-hero-box.form.btn.pickImages"}}
+            </button>
+          {{/if}}
+          <p class="cs-hero-box-hint">{{localize "cs-hero-box.form.images.hint"}}</p>
+        </div>
+      </div>
+    {{/if}}
+
+    <div class="cs-hero-box-form__section cs-hero-box-form__section--static" data-section-id="mode">
+      <div class="cs-hero-box-form__section-header cs-hero-box-form__section-header--static">
+        <h4>
+          <i class="fas fa-dice"></i>
+          {{localize "cs-hero-box.form.labels.mode"}}
+        </h4>
+      </div>
+      <div class="cs-hero-box-form__section-content">
+        <div class="cs-hero-box-form__segment-buttons">
+          {{#each modeOptions}}
+            <button 
+              type="button" 
+              class="cs-hero-box-form__segment-btn {{#if isChecked}}active{{/if}}"
+              data-mode-value="{{id}}"
+              data-tooltip="{{tooltip}}"
+            >
+              {{label}}
+            </button>
           {{/each}}
         </div>
-      </fieldset>
-    {{/if}}
-  {{/if}}
+        <input type="hidden" name="selectedMode" value="{{selectedModeValue}}" />
+      </div>
+    </div>
 
-  {{#if isImageMode}}
-    <fieldset class="cs-hero-box-form__images-section">
-      <legend>{{localize "cs-hero-box.form.labels.images"}}</legend>
-      
-      {{#if hasSelectedImages}}
-        <div class="cs-hero-box-form__selected-images">
-          {{#each selectedImages}}
-            <div class="cs-hero-box-form__selected-image-item" data-uuid="{{uuid}}">
-              <img src="{{url}}" alt="{{name}}" />
-              <span class="cs-hero-box-form__selected-image-name" title="{{name}}">{{name}}</span>
-              <button type="button" class="cs-hero-box-form__remove-image-btn" data-action="removeImage" data-uuid="{{uuid}}">
+    <div class="cs-hero-box-form__section cs-hero-box-form__section--static" data-section-id="sourceActor">
+      <div class="cs-hero-box-form__section-header cs-hero-box-form__section-header--static">
+        <h4>
+          <i class="fas fa-user-plus"></i>
+          {{localize "cs-hero-box.form.labels.sourceActor"}}
+        </h4>
+      </div>
+      <div class="cs-hero-box-form__section-content">
+        <div class="cs-hero-box-form__drop-zone" data-drop-zone>
+          {{#if sourceActor}}
+            <div class="cs-hero-box-form__source-actor">
+              <img src="{{sourceActor.img}}" alt="{{sourceActor.name}}" />
+              <span class="cs-hero-box-form__source-actor-name">{{sourceActor.name}}</span>
+              <button type="button" class="cs-hero-box-form__clear-btn" data-action="clearSourceActor">
                 <i class="fas fa-times"></i>
               </button>
             </div>
-          {{/each}}
+          {{else}}
+            <div class="cs-hero-box-form__drop-placeholder">
+              <i class="fas fa-user-plus"></i>
+              <span>{{localize "cs-hero-box.form.sourceActor.dropHint"}}</span>
+            </div>
+          {{/if}}
         </div>
-        <div class="cs-hero-box-form__image-actions">
-          <button type="button" class="cs-hero-box-form__add-more-btn" data-action="pickImages">
-            <i class="fas fa-plus"></i>
-            {{localize "cs-hero-box.form.btn.addMore"}}
-          </button>
-          <button type="button" class="cs-hero-box-form__clear-images-btn" data-action="clearImages">
-            <i class="fas fa-trash"></i>
-            {{localize "cs-hero-box.form.btn.clearAll"}}
-          </button>
-        </div>
-      {{else}}
-        <button type="button" class="cs-hero-box-form__pick-images-btn" data-action="pickImages">
-          <i class="fas fa-images"></i>
-          {{localize "cs-hero-box.form.btn.pickImages"}}
-        </button>
-      {{/if}}
-      
-      <p class="cs-hero-box-hint">{{localize "cs-hero-box.form.images.hint"}}</p>
-    </fieldset>
-  {{/if}}
-
-  <fieldset>
-    <legend>{{localize "cs-hero-box.form.labels.mode"}}</legend>
-    <div class="cs-hero-box-form__radio-group">
-      {{#each modeOptions}}
-        <label class="cs-hero-box-form__radio" data-tooltip="{{tooltip}}">
-          <input 
-            type="radio" 
-            name="mode" 
-            value="{{@index}}" 
-            {{#if isChecked}}checked{{/if}}
-          />
-          <span>{{label}}</span>
-        </label>
-      {{/each}}
+        <p class="cs-hero-box-hint">{{localize "cs-hero-box.form.sourceActor.hint"}}</p>
+      </div>
     </div>
-  </fieldset>
 
-  <fieldset>
-    <legend>{{localize "cs-hero-box.form.labels.sourceActor"}}</legend>
-    <div class="cs-hero-box-form__drop-zone" data-drop-zone>
-      {{#if sourceActor}}
-        <div class="cs-hero-box-form__source-actor">
-          <img src="{{sourceActor.img}}" alt="{{sourceActor.name}}" />
-          <span class="cs-hero-box-form__source-actor-name">{{sourceActor.name}}</span>
-          <button type="button" class="cs-hero-box-form__clear-btn" data-action="clearSourceActor">
-            <i class="fas fa-times"></i>
-          </button>
-        </div>
-      {{else}}
-        <div class="cs-hero-box-form__drop-placeholder">
-          <i class="fas fa-user-plus"></i>
-          <span>{{localize "cs-hero-box.form.sourceActor.dropHint"}}</span>
-        </div>
-      {{/if}}
-    </div>
-    <p class="cs-hero-box-hint">{{localize "cs-hero-box.form.sourceActor.hint"}}</p>
-  </fieldset>
+  </div>
 </div>

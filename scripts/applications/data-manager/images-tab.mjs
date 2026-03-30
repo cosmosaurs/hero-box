@@ -12,6 +12,8 @@ import { parseTagsFromFileName } from '../../utils/filepicker.mjs';
 import { filterWorker } from '../../utils/filter-worker-bridge.mjs';
 import { CollapsedGroupsManager } from '../../utils/collapsed-groups.mjs';
 import { MODE } from '../import-image/image-import.mjs';
+import { getSetting, setSetting } from '../../settings.mjs';
+import { SETTINGS } from '../../constants/settings.mjs';
 
 /** Tab logic for indexed images; `app` is the parent DataManager. */
 export class ImagesTab {
@@ -660,6 +662,7 @@ export class ImagesTab {
       } else {
         this.#collapsedGroups.delete(category);
       }
+      this.#saveCollapsedState();
     }
   }
 
@@ -896,6 +899,12 @@ export class ImagesTab {
   }
 
   #restoreCollapsedGroups() {
+    try {
+      const saved = getSetting(SETTINGS.COLLAPSED_DATA_MANAGER);
+      const tabCollapsed = saved?.images ?? [];
+      this.#collapsedGroups = new Set(tabCollapsed);
+    } catch {}
+
     for (const category of this.#collapsedGroups) {
       const group = this.#app.querySelector(`.cs-hero-box-data-manager__tag-group[data-category="${category}"]`);
       if (group) {
@@ -934,6 +943,14 @@ export class ImagesTab {
       filterWorker.destroy();
     } catch {}
     this.#workerInitialized = false;
+  }
+
+  #saveCollapsedState() {
+    try {
+      const saved = getSetting(SETTINGS.COLLAPSED_DATA_MANAGER) ?? {};
+      saved.images = Array.from(this.#collapsedGroups);
+      setSetting(SETTINGS.COLLAPSED_DATA_MANAGER, saved);
+    } catch {}
   }
 }
 
