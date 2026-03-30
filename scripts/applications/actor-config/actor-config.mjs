@@ -326,7 +326,7 @@ export class ActorConfig extends BaseFormApplication {
     const isTagMode = this.#selectionMode === SELECTION_MODE.TAG;
     const isImageMode = this.#selectionMode === SELECTION_MODE.IMAGE;
 
-    const otherTagsList = tag.getOther();
+    const otherTagsList = tag.getOther().filter(t => (tagCounts.get(t.id) ?? 0) > 0);
 
     const selectedGender = state.gender.length === 1 ? state.gender[0] : 'any';
     let selectedGenderLabel = '';
@@ -340,7 +340,7 @@ export class ActorConfig extends BaseFormApplication {
       { value: 'f', label: tag.getLabel('f'), isSelected: selectedGender === 'f' },
     ];
 
-    const ageIcons = { c: 'fa-baby', t: 'fa-child', y: 'fa-person', a: 'fa-user', o: 'fa-person-cane' };
+    const ageIcons = { c: 'fa-baby', t: 'fa-child', y: 'fa-person', a: 'fa-regular fa-person', o: 'fa-person-cane' };
     const ageTags = Object.entries(AGE_TAGS).map(([key, id]) => ({
       id,
       label: tag.getLabel(id),
