@@ -19,6 +19,11 @@ https://github.com/cosmosaurs/hero-box/releases/latest/download/module.json
 ```
 After enabling, open **Module Settings** to add data sources (journals/compendiums). Install at least one **[content pack](https://github.com/cosmosaurs/hero-box/wiki/Content-Packs)** module to get ready-made tags, images, and names.
 
+## User Guide
+For more details about the module and its usage see our wiki:
+- [Руководство по модулю](https://github.com/cosmosaurs/hero-box/wiki/%D0%A0%D1%83%D0%BA%D0%BE%D0%B2%D0%BE%D0%B4%D1%81%D1%82%D0%B2%D0%BE-%D0%BF%D0%BE-%D0%BC%D0%BE%D0%B4%D1%83%D0%BB%D1%8E)
+- [Module Guide](https://github.com/cosmosaurs/hero-box/wiki/Module-Guide)
+
 ## Support
 
 If you like the module, follows and shares help a lot — thank you.
