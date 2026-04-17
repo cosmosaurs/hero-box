@@ -192,22 +192,6 @@ export class ActorConfig extends BaseFormApplication {
         const value = btn.dataset.gender;
         if (hiddenInput) hiddenInput.value = value;
         this.#formState.gender = value === 'any' ? [] : [value];
-
-        const section = this.querySelector('[data-section-id="gender"]');
-        const header = section?.querySelector('.cs-hero-box-form__section-header h4');
-        if (!header) return;
-        let badge = header.querySelector('.cs-hero-box-form__badge');
-        const label = value !== 'any' ? tag.getLabel(value) : '';
-        if (label) {
-          if (!badge) {
-            badge = document.createElement('span');
-            badge.className = 'cs-hero-box-form__badge';
-            header.appendChild(badge);
-          }
-          badge.textContent = label;
-        } else {
-          badge?.remove();
-        }
       });
     }
   }
