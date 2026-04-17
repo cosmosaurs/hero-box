@@ -30,9 +30,28 @@ class ImagePickerService {
   #findCandidatesByGroups(tagGroups) {
     const races = tagGroups.race ?? [];
     const subraces = tagGroups.subrace ?? [];
+    const excludeTags = [
+      ...(tagGroups.raceExclude ?? []),
+      ...(tagGroups.subraceExclude ?? []),
+      ...(tagGroups.ageExclude ?? []),
+      ...(tagGroups.roleExclude ?? []),
+      ...(tagGroups.otherExclude ?? []),
+    ];
+
+    const filterGroups = { ...tagGroups };
+    delete filterGroups.raceExclude;
+    delete filterGroups.subraceExclude;
+    delete filterGroups.ageExclude;
+    delete filterGroups.roleExclude;
+    delete filterGroups.otherExclude;
+
+    const applyExclude = (candidates) => {
+      if (excludeTags.length === 0) return candidates;
+      return candidates.filter(img => !excludeTags.some(t => img.tags.includes(t)));
+    };
 
     if (races.length === 0) {
-      return tagIndex.findByTagGroups(tagGroups);
+      return applyExclude(tagIndex.findByTagGroups(filterGroups));
     }
 
     // pair each race with its selected subraces (or no subrace if none selected)
@@ -54,20 +73,19 @@ class ImagePickerService {
     }
 
     if (raceSubracePairs.length === 0) {
-      return tagIndex.findByTagGroups(tagGroups);
+      return applyExclude(tagIndex.findByTagGroups(filterGroups));
     }
 
-    // weight each pair equally, then divide by the number of images in that pair
     const allCandidates = [];
 
     for (const pair of raceSubracePairs) {
       const pairGroups = {
-        ...tagGroups,
+        ...filterGroups,
         race: [pair.race],
         subrace: pair.subrace ? [pair.subrace] : [],
       };
 
-      const candidates = tagIndex.findByTagGroups(pairGroups);
+      const candidates = applyExclude(tagIndex.findByTagGroups(pairGroups));
 
       if (candidates.length > 0) {
         const weight = 1 / raceSubracePairs.length;
