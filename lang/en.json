@@ -229,6 +229,12 @@
         "dropHint": "Drop Actor Here",
         "hint": "Drop an actor to copy its stats and items to the new character (optional).",
         "wrongType": "Please drop an Actor."
+      },
+      "clearRandom": {
+        "button": "Remove Random Generation",
+        "title": "Remove Random Generation",
+        "content": "This will remove the random token generation settings from this actor. The actor will no longer change appearance when placed on a scene.",
+        "success": "Random generation removed."
       }
     },
 

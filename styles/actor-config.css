@@ -349,6 +349,16 @@
   color: var(--cs-hero-box-text-primary);
 }
 
+.cs-hero-box-form__age-btn:hover {
+  background: var(--cs-hero-box-bg-hover);
+  color: var(--cs-hero-box-text-secondary);
+}
+
+.cs-hero-box-form__age-btn.active {
+  background: rgba(255, 128, 0, 0.15);
+  color: var(--cs-hero-box-text-primary);
+}
+
 .cs-hero-box-form__slider-group {
   margin-bottom: var(--cs-hero-box-spacing-sm);
   padding-top: var(--cs-hero-box-spacing-xs);
@@ -659,4 +669,100 @@
 
 .cs-hero-box-image-import__checkbox-inline input {
   margin: 0;
+}
+
+.cs-hero-box-form__tri-chip {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--cs-hero-box-spacing-xs) var(--cs-hero-box-spacing-sm);
+  border-radius: var(--cs-hero-box-radius-sm);
+  background: var(--cs-hero-box-bg-secondary);
+  border: 1px solid transparent;
+  cursor: pointer;
+  font-size: var(--cs-hero-box-font-size-md);
+  color: var(--cs-hero-box-text-secondary);
+  transition: background var(--cs-hero-box-transition-fast), border-color var(--cs-hero-box-transition-fast), color var(--cs-hero-box-transition-fast);
+  user-select: none;
+  text-align: center;
+}
+
+.cs-hero-box-form__tri-chip:hover {
+  background: var(--cs-hero-box-bg-hover);
+  color: var(--cs-hero-box-text-primary);
+}
+
+.cs-hero-box-form__tri-chip[data-state="include"] {
+  background: rgba(34, 197, 94, 0.15);
+  border-color: rgba(34, 197, 94, 0.4);
+  color: #4ade80;
+}
+
+.cs-hero-box-form__tri-chip[data-state="exclude"] {
+  background: rgba(239, 68, 68, 0.15);
+  border-color: rgba(239, 68, 68, 0.4);
+  color: #f87171;
+}
+
+.cs-hero-box-form__tri-chip--race {
+  width: 100%;
+}
+
+.cs-hero-box-form__tri-chip--subrace {
+  font-size: var(--cs-hero-box-font-size-sm);
+  padding: 2px var(--cs-hero-box-spacing-xs);
+}
+
+.cs-hero-box-form__tri-chip--age {
+  flex: 1;
+  border-radius: 0;
+  border: none;
+  border-inline-end: 1px solid var(--cs-hero-box-border-color);
+  font-size: var(--cs-hero-box-font-size-lg);
+}
+
+.cs-hero-box-form__tri-chip--age:last-child {
+  border-inline-end: none;
+}
+
+.cs-hero-box-form__tri-chip--age[data-state="none"]:hover {
+  background: var(--cs-hero-box-bg-hover);
+}
+
+.cs-hero-box-form__tri-chip:hover {
+  background: var(--cs-hero-box-bg-hover);
+  color: var(--cs-hero-box-text-primary);
+}
+
+.cs-hero-box-form__tri-chip[data-state="include"] {
+  background: rgba(34, 197, 94, 0.15);
+  border-color: rgba(34, 197, 94, 0.4);
+  color: #4ade80;
+}
+
+.cs-hero-box-form__tri-chip[data-state="exclude"] {
+  background: rgba(239, 68, 68, 0.15);
+  border-color: rgba(239, 68, 68, 0.4);
+  color: #f87171;
+}
+
+.cs-hero-box-form__clear-random-btn {
+  width: 100%;
+  padding: var(--cs-hero-box-spacing-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--cs-hero-box-spacing-sm);
+  background: transparent;
+  border: 1px solid rgba(239, 68, 68, 0.4);
+  border-radius: var(--cs-hero-box-radius-md);
+  color: #f87171;
+  cursor: pointer;
+  font-size: var(--cs-hero-box-font-size-md);
+  transition: all var(--cs-hero-box-transition-fast);
+}
+
+.cs-hero-box-form__clear-random-btn:hover {
+  background: rgba(239, 68, 68, 0.15);
+  border-color: rgba(239, 68, 68, 0.7);
 }

@@ -270,7 +270,7 @@ export class DataManager extends BaseApplication {
     settingsBtn.dataset.tooltip = game.i18n.localize('cs-hero-box.settings.dataSources.name');
     settingsBtn.innerHTML = '<i class="fas fa-cog"></i>';
 
-    closeBtn.insertAdjacentElement('afterend', settingsBtn);
+    closeBtn.insertAdjacentElement('beforebegin', settingsBtn);
   }
 
   /** Switches tab; resets non-images tab state. */

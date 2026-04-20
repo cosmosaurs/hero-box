@@ -145,7 +145,15 @@ class ActorService {
     const nicknameChance = (criteria.nicknameChance ?? 50) / 100;
     const nicknameOnlyChance = (criteria.nicknameOnlyChance ?? 0) / 100;
     const noLastNameChance = (criteria.noLastNameChance ?? 0) / 100;
-    const name = nameGenerator.generate(imageData.tags, nicknameChance, nicknameOnlyChance, noLastNameChance);
+
+    const name = this.#resolveTokenName({
+      imageTags: imageData.tags ?? [],
+      nicknameChance,
+      nicknameOnlyChance,
+      noLastNameChance,
+      fallbackName: actorDoc.prototypeToken?.name || actorDoc.name,
+    });
+
     const scale = imageData.scale ?? 1;
 
     token.updateSource({
@@ -174,7 +182,7 @@ class ActorService {
     if (!token.actorLink) {
       token.updateSource({
         delta: {
-          name: name,
+          name,
           img: imageData.portraitUrl,
         },
       });
@@ -200,11 +208,16 @@ class ActorService {
   #buildTagGroups(input) {
     const groups = {
       race: [],
+      raceExclude: input.raceExclude ?? [],
       subrace: [],
+      subraceExclude: input.subraceExclude ?? [],
       gender: input.gender ?? [],
       age: input.age ?? [],
+      ageExclude: input.ageExclude ?? [],
       role: input.role ?? [],
+      roleExclude: input.roleExclude ?? [],
       other: input.other ?? [],
+      otherExclude: input.otherExclude ?? [],
     };
 
     if (input.race?.length) {
@@ -229,11 +242,16 @@ class ActorService {
   #tagsToGroups(tags) {
     const groups = {
       race: [],
+      raceExclude: [],
       subrace: [],
+      subraceExclude: [],
       gender: [],
       age: [],
+      ageExclude: [],
       role: [],
+      roleExclude: [],
       other: [],
+      otherExclude: [],
     };
 
     const genderIds = new Set(Object.values(GENDER_TAGS));
@@ -265,9 +283,10 @@ class ActorService {
 
   /** @param {Record<string, string[]>} tagGroups */
   #flattenTagGroups(tagGroups) {
+    const excludeKeys = new Set(['raceExclude', 'subraceExclude', 'ageExclude', 'roleExclude', 'otherExclude']);
     const tags = [];
-    for (const groupTags of Object.values(tagGroups)) {
-      if (Array.isArray(groupTags)) {
+    for (const [key, groupTags] of Object.entries(tagGroups)) {
+      if (!excludeKeys.has(key) && Array.isArray(groupTags)) {
         tags.push(...groupTags);
       }
     }
@@ -309,8 +328,10 @@ class ActorService {
     };
 
     if (isRandom) {
-      actorData.name = this.#generatePlaceholderName(tagGroups, isImageMode);
-      actorData.img = RANDOM_PORTRAIT_PATH;
+      if (!existingActor) {
+        actorData.name = this.#generatePlaceholderName(tagGroups, isImageMode);
+        actorData.img = RANDOM_PORTRAIT_PATH;
+      }
 
       actorData.prototypeToken = {
         displayName: CONST.TOKEN_DISPLAY_MODES.HOVER,
@@ -366,29 +387,17 @@ class ActorService {
       return this.#uniqueName(baseName);
     }
 
-    const parts = [game.i18n.localize('cs-hero-box.actor.randomPrefix')];
-
-    if (tagGroups.gender?.length === 1) {
-      const genderLabel = game.i18n.localize(`cs-hero-box.gender.${tagGroups.gender[0]}`);
-      parts.push(genderLabel);
+    if (tagGroups.subrace?.length) {
+      const subraceLabels = tagGroups.subrace.map(s => tag.getLabel(s));
+      return this.#uniqueName(subraceLabels.join('/'));
     }
 
     if (tagGroups.race?.length) {
       const raceLabels = tagGroups.race.map(r => tag.getLabel(r));
-      parts.push(raceLabels.join('/'));
+      return this.#uniqueName(raceLabels.join('/'));
     }
 
-    if (tagGroups.subrace?.length) {
-      const subraceLabels = tagGroups.subrace.map(s => tag.getLabel(s));
-      parts.push(`(${subraceLabels.join('/')})`);
-    }
-
-    if (tagGroups.role?.length) {
-      const roleLabels = tagGroups.role.map(r => tag.getLabel(r));
-      parts.push(roleLabels.join('/'));
-    }
-
-    const baseName = parts.join(' ');
+    const baseName = game.i18n.localize('cs-hero-box.actor.randomPrefix');
     return this.#uniqueName(baseName);
   }
 
@@ -444,6 +453,35 @@ class ActorService {
       logger.warn('Failed to get source actor data:', error);
       return null;
     }
+  }
+
+  #resolveTokenName({ imageTags, nicknameChance, nicknameOnlyChance, noLastNameChance, fallbackName }) {
+    const generated = nameGenerator.generate(imageTags, nicknameChance, nicknameOnlyChance, noLastNameChance);
+    const fallbackPrefix = game.i18n.localize('cs-hero-box.actor.fallbackName');
+
+    if (generated && !generated.startsWith(fallbackPrefix)) {
+      return generated;
+    }
+
+    const subraceIds = new Set();
+    const raceIds = new Set();
+
+    for (const tagId of imageTags) {
+      const tagData = tag.get(tagId);
+      if (!tagData) continue;
+      if (tagData.category === 'subrace') subraceIds.add(tagId);
+      else if (tagData.category === 'race') raceIds.add(tagId);
+    }
+
+    if (subraceIds.size > 0) {
+      return tag.getLabel([...subraceIds][0]);
+    }
+
+    if (raceIds.size > 0) {
+      return tag.getLabel([...raceIds][0]);
+    }
+
+    return fallbackName || fallbackPrefix;
   }
 }
 

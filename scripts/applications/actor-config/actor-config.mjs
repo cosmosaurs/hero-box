@@ -27,14 +27,15 @@ export class ActorConfig extends BaseFormApplication {
       width: 500,
       height: 'auto',
     },
-    actions: {
-      generate: function() { this._onGenerate(); },
-      clearSourceActor: function() { this._onClearSourceActor(); },
-      pickImages: function() { this._onPickImages(); },
-      clearImages: function() { this._onClearImages(); },
-      removeImage: function(event, target) { this._onRemoveImage(event, target); },
-      setSelectionMode: function(event, target) { this._onSetSelectionMode(event, target); },
-    },
+        actions: {
+          generate: function() { this._onGenerate(); },
+          clearSourceActor: function() { this._onClearSourceActor(); },
+          pickImages: function() { this._onPickImages(); },
+          clearImages: function() { this._onClearImages(); },
+          removeImage: function(event, target) { this._onRemoveImage(event, target); },
+          setSelectionMode: function(event, target) { this._onSetSelectionMode(event, target); },
+          clearRandomCriteria: function() { this._onClearRandomCriteria(); },
+        },
     dragDrop: [{ dragSelector: null, dropSelector: '[data-drop-zone]' }],
   };
 
@@ -123,14 +124,12 @@ export class ActorConfig extends BaseFormApplication {
   _onRender(context, options) {
     super._onRender(context, options);
     this.#dragDrop.forEach(d => d.bind(this.element));
-    this.#bindChipToggles();
-    this.#bindRaceChips();
+    this.#bindTriStateChips();
     this.#bindDropZoneEvents();
     this.#bindNicknameSliders();
     this.#bindRaceSearch();
     this.#bindAccordions();
     this.#bindGenderButtons();
-    this.#bindAgeButtons();
     this.#bindModeButtons();
   }
 
@@ -307,18 +306,19 @@ export class ActorConfig extends BaseFormApplication {
     const raceTags = this.#raceTags
       .filter(t => (tagCounts.get(t.id) ?? 0) > 0)
       .map(t => {
-        const isSelected = state.race.includes(t.id);
+        const raceState = this.#getTagState(t.id, state.race, state.raceExclude);
+        const isIncluded = raceState === 'include';
         const subraces = tag.getSubraces(t.id).filter(s => (tagCounts.get(s.id) ?? 0) > 0);
         return {
           id: t.id,
           label: tag.getLabel(t.id),
-          isSelected,
+          tagState: raceState,
           hasSubraces: subraces.length > 0,
-          showSubraces: isSelected && subraces.length > 0,
+          showSubraces: isIncluded && subraces.length > 0,
           subraces: subraces.map(s => ({
             id: s.id,
             label: tag.getLabel(s.id),
-            isSelected: state.subrace[t.id]?.includes(s.id) ?? false,
+            tagState: this.#getTagState(s.id, state.subrace?.[t.id] ?? [], state.subraceExclude ?? []),
           })),
         };
       }).sort((a, b) => a.label.localeCompare(b.label));
@@ -345,7 +345,7 @@ export class ActorConfig extends BaseFormApplication {
       id,
       label: tag.getLabel(id),
       icon: ageIcons[id] ?? 'fa-user',
-      isSelected: state.age.includes(id),
+      tagState: this.#getTagState(id, state.age, state.ageExclude),
     }));
 
     const roleTagsFiltered = this.#roleTags
@@ -353,8 +353,23 @@ export class ActorConfig extends BaseFormApplication {
       .map(t => ({
         id: t.id,
         label: tag.getLabel(t.id),
-        isSelected: state.role.includes(t.id),
+        tagState: this.#getTagState(t.id, state.role, state.roleExclude),
       }));
+
+    const otherTagsMapped = otherTagsList.map(t => ({
+      id: t.id,
+      label: tag.getLabel(t.id),
+      tagState: this.#getTagState(t.id, state.other, state.otherExclude),
+    }));
+
+    const selectedRaceCount = (state.race?.length ?? 0) + (state.raceExclude?.length ?? 0);
+    const selectedAgeCount = (state.age?.length ?? 0) + (state.ageExclude?.length ?? 0);
+    const subraceIncludeCount = Object.values(state.subrace ?? {}).reduce((acc, arr) => acc + arr.length, 0);
+    const subraceExcludeCount = state.subraceExclude?.length ?? 0;
+
+    const hasRandomCriteria = this.#actor
+      ? !!getFlag(this.#actor, FLAGS.TOKEN_CRITERIA)
+      : false;
 
     return {
       selectionMode: this.#selectionMode,
@@ -367,15 +382,11 @@ export class ActorConfig extends BaseFormApplication {
       selectedGenderLabel,
       ageTags,
       roleTags: roleTagsFiltered,
-      otherTags: otherTagsList.map(t => ({
-        id: t.id,
-        label: tag.getLabel(t.id),
-        isSelected: (state.other ?? []).includes(t.id),
-      })),
-      selectedRaceCount: state.race.length || 0,
-      selectedAgeCount: state.age.length || 0,
-      selectedRoleCount: state.role.length || 0,
-      selectedOtherCount: (state.other ?? []).length || 0,
+      otherTags: otherTagsMapped,
+      selectedRaceCount: selectedRaceCount + subraceIncludeCount + subraceExcludeCount,
+      selectedAgeCount,
+      selectedRoleCount: (state.role?.length ?? 0) + (state.roleExclude?.length ?? 0),
+      selectedOtherCount: (state.other?.length ?? 0) + (state.otherExclude?.length ?? 0),
       nicknameChance: state.nicknameChance ?? 50,
       nicknameOnlyChance: state.nicknameOnlyChance ?? 0,
       noLastNameChance: state.noLastNameChance ?? 0,
@@ -398,6 +409,7 @@ export class ActorConfig extends BaseFormApplication {
       selectedImages: this.#selectedImages,
       hasSelectedImages: this.#selectedImages.length > 0,
       isEditing: !!this.#actor,
+      hasRandomCriteria,
       buttons: [
         {
           type: 'button',
@@ -512,55 +524,82 @@ export class ActorConfig extends BaseFormApplication {
   #syncFormState() {
     if (!this.element) return;
 
-    this.#formState.race = [];
-    for (const cb of this.querySelectorAll('input[name^="race."]')) {
-      if (cb.checked) this.#formState.race.push(cb.name.replace('race.', ''));
+    const state = this.#formState;
+
+    state.race = [];
+    state.raceExclude = [];
+    state.subraceExclude = [];
+
+    for (const chip of this.querySelectorAll('.cs-hero-box-form__tri-chip[data-group="race"]')) {
+      const tagId = chip.dataset.tagId;
+      const chipState = chip.dataset.state ?? 'none';
+      if (chipState === 'include') state.race.push(tagId);
+      else if (chipState === 'exclude') state.raceExclude.push(tagId);
     }
 
     const validSubraces = new Set();
-    for (const raceId of this.#formState.race) {
+    for (const raceId of state.race) {
       tag.getSubraces(raceId).forEach(s => validSubraces.add(s.id));
     }
 
-    this.#formState.subrace = {};
-    for (const cb of this.querySelectorAll('input[name^="subrace."]')) {
-      const parts = cb.name.replace('subrace.', '').split('.');
-      const raceId = parts[0];
-      const subraceId = parts[1];
-      if (cb.checked && validSubraces.has(subraceId)) {
-        if (!this.#formState.subrace[raceId]) this.#formState.subrace[raceId] = [];
-        this.#formState.subrace[raceId].push(subraceId);
+    state.subrace = {};
+    for (const chip of this.querySelectorAll('.cs-hero-box-form__tri-chip[data-group="subrace"]')) {
+      const tagId = chip.dataset.tagId;
+      const chipState = chip.dataset.state ?? 'none';
+      if (!validSubraces.has(tagId)) continue;
+
+      const subraceParent = this.querySelector(`[data-subrace-parent]`)?.dataset?.subraceParent;
+      const parentEl = chip.closest('[data-subrace-parent]');
+      const parentRaceId = parentEl?.dataset?.subraceParent;
+
+      if (chipState === 'include' && parentRaceId) {
+        if (!state.subrace[parentRaceId]) state.subrace[parentRaceId] = [];
+        state.subrace[parentRaceId].push(tagId);
+      } else if (chipState === 'exclude') {
+        state.subraceExclude.push(tagId);
       }
     }
 
     const genderHidden = this.querySelector('input[name="selectedGender"]');
     const genderVal = genderHidden?.value ?? 'any';
-    this.#formState.gender = genderVal === 'any' ? [] : [genderVal];
+    state.gender = genderVal === 'any' ? [] : [genderVal];
 
-    this.#formState.age = [];
-    for (const btn of this.querySelectorAll('.cs-hero-box-form__age-btn.active')) {
-      this.#formState.age.push(btn.dataset.age);
+    state.age = [];
+    state.ageExclude = [];
+    for (const chip of this.querySelectorAll('.cs-hero-box-form__tri-chip[data-group="age"]')) {
+      const tagId = chip.dataset.tagId;
+      const chipState = chip.dataset.state ?? 'none';
+      if (chipState === 'include') state.age.push(tagId);
+      else if (chipState === 'exclude') state.ageExclude.push(tagId);
     }
 
-    this.#formState.role = [];
-    for (const cb of this.querySelectorAll('input[name^="role."]')) {
-      if (cb.checked) this.#formState.role.push(cb.name.replace('role.', ''));
+    state.role = [];
+    state.roleExclude = [];
+    for (const chip of this.querySelectorAll('.cs-hero-box-form__tri-chip[data-group="role"]')) {
+      const tagId = chip.dataset.tagId;
+      const chipState = chip.dataset.state ?? 'none';
+      if (chipState === 'include') state.role.push(tagId);
+      else if (chipState === 'exclude') state.roleExclude.push(tagId);
     }
 
-    this.#formState.other = [];
-    for (const cb of this.querySelectorAll('input[name^="other."]')) {
-      if (cb.checked) this.#formState.other.push(cb.name.replace('other.', ''));
+    state.other = [];
+    state.otherExclude = [];
+    for (const chip of this.querySelectorAll('.cs-hero-box-form__tri-chip[data-group="other"]')) {
+      const tagId = chip.dataset.tagId;
+      const chipState = chip.dataset.state ?? 'none';
+      if (chipState === 'include') state.other.push(tagId);
+      else if (chipState === 'exclude') state.otherExclude.push(tagId);
     }
 
     const modeHidden = this.querySelector('input[name="selectedMode"]');
-    if (modeHidden) this.#formState.mode = modeHidden.value;
+    if (modeHidden) state.mode = modeHidden.value;
 
     const nc = this.querySelector('input[name="nicknameChance"]');
-    if (nc) this.#formState.nicknameChance = parseInt(nc.value) || 0;
+    if (nc) state.nicknameChance = parseInt(nc.value) || 0;
     const noc = this.querySelector('input[name="nicknameOnlyChance"]');
-    if (noc) this.#formState.nicknameOnlyChance = parseInt(noc.value) || 0;
+    if (noc) state.nicknameOnlyChance = parseInt(noc.value) || 0;
     const nlc = this.querySelector('input[name="noLastNameChance"]');
-    if (nlc) this.#formState.noLastNameChance = parseInt(nlc.value) || 0;
+    if (nlc) state.noLastNameChance = parseInt(nlc.value) || 0;
   }
 
   /**
@@ -605,11 +644,16 @@ export class ActorConfig extends BaseFormApplication {
 
     return {
       race: [],
+      raceExclude: [],
       subrace: {},
+      subraceExclude: [],
       gender: [],
       age: [],
+      ageExclude: [],
       role: [],
+      roleExclude: [],
       other: [],
+      otherExclude: [],
       mode: TOKEN_MODE.RANDOM,
       sourceActor: null,
       raceSearchQuery: '',
@@ -623,11 +667,16 @@ export class ActorConfig extends BaseFormApplication {
   #normalizeFormState(saved) {
     return {
       race: saved.race ?? [],
+      raceExclude: saved.raceExclude ?? [],
       subrace: saved.subrace ?? {},
+      subraceExclude: saved.subraceExclude ?? [],
       gender: saved.gender ?? [],
       age: saved.age ?? [],
+      ageExclude: saved.ageExclude ?? [],
       role: saved.role ?? [],
+      roleExclude: saved.roleExclude ?? [],
       other: saved.other ?? [],
+      otherExclude: saved.otherExclude ?? [],
       mode: saved.mode ?? TOKEN_MODE.RANDOM,
       sourceActor: saved.sourceActor ?? null,
       raceSearchQuery: saved.raceSearchQuery ?? '',
@@ -653,11 +702,16 @@ export class ActorConfig extends BaseFormApplication {
     return {
       selectionMode: this.#selectionMode,
       race: isImageMode ? [] : this.#formState.race,
+      raceExclude: isImageMode ? [] : (this.#formState.raceExclude ?? []),
       subrace: isImageMode ? {} : this.#formState.subrace,
+      subraceExclude: isImageMode ? [] : (this.#formState.subraceExclude ?? []),
       gender: isImageMode ? [] : this.#formState.gender,
       age: isImageMode ? [] : this.#formState.age,
+      ageExclude: isImageMode ? [] : (this.#formState.ageExclude ?? []),
       role: isImageMode ? [] : this.#formState.role,
+      roleExclude: isImageMode ? [] : (this.#formState.roleExclude ?? []),
       other: isImageMode ? [] : (this.#formState.other ?? []),
+      otherExclude: isImageMode ? [] : (this.#formState.otherExclude ?? []),
       mode: this.#formState.mode,
       sourceActor: this.#formState.sourceActor,
       selectedImageUuids: isImageMode ? this.#selectedImages.map(img => img.uuid) : [],
@@ -718,6 +772,8 @@ export class ActorConfig extends BaseFormApplication {
         return;
       }
 
+      this.#syncFormState();
+
       this.#formState.sourceActor = {
         uuid: actorDoc.uuid,
         name: actorDoc.name,
@@ -749,91 +805,156 @@ export class ActorConfig extends BaseFormApplication {
   }
 
   #bindAgeButtons() {
-    const buttons = this.querySelectorAll('.cs-hero-box-form__age-btn');
-    for (const btn of buttons) {
-      this.addEvent(btn, 'click', () => {
-        btn.classList.toggle('active');
-        const ageId = btn.dataset.age;
-        if (btn.classList.contains('active')) {
-          if (!this.#formState.age.includes(ageId)) {
-            this.#formState.age.push(ageId);
-          }
-        } else {
-          this.#formState.age = this.#formState.age.filter(a => a !== ageId);
-        }
-      });
-    }
   }
 
   #bindChipToggles() {
-    const chips = this.querySelectorAll('.cs-hero-box-form__checkbox-group .cs-hero-box-form__checkbox');
+  }
+
+  #bindRaceChips() {
+  }
+
+  #getTagState(tagId, includeList, excludeList) {
+    if ((includeList ?? []).includes(tagId)) return 'include';
+    if ((excludeList ?? []).includes(tagId)) return 'exclude';
+    return 'none';
+  }
+
+  #bindTriStateChips() {
+    const chips = this.querySelectorAll('.cs-hero-box-form__tri-chip');
     for (const chip of chips) {
-      const input = chip.querySelector('input[type="checkbox"]');
-      if (!input) continue;
-
-      if (input.checked) chip.classList.add('active');
-
       this.addEvent(chip, 'click', (e) => {
         e.preventDefault();
-        input.checked = !input.checked;
-        chip.classList.toggle('active', input.checked);
+        const current = chip.dataset.state ?? 'none';
+        const next = current === 'none' ? 'include' : current === 'include' ? 'exclude' : 'none';
+        chip.dataset.state = next;
+
+        const tagId = chip.dataset.tagId;
+        const group = chip.dataset.group;
+
+        if (group === 'race') {
+          this.#formState.race = this.#formState.race.filter(id => id !== tagId);
+          this.#formState.raceExclude = (this.#formState.raceExclude ?? []).filter(id => id !== tagId);
+          if (next === 'include') this.#formState.race.push(tagId);
+          else if (next === 'exclude') this.#formState.raceExclude.push(tagId);
+
+          const subraceContainer = this.querySelector(`[data-subrace-parent="${tagId}"]`);
+          if (subraceContainer) {
+            subraceContainer.style.display = next === 'include' ? '' : 'none';
+            if (next !== 'include') {
+              for (const sub of subraceContainer.querySelectorAll('.cs-hero-box-form__tri-chip')) {
+                sub.dataset.state = 'none';
+                const subId = sub.dataset.tagId;
+                if (this.#formState.subrace) {
+                  for (const raceId of Object.keys(this.#formState.subrace)) {
+                    this.#formState.subrace[raceId] = (this.#formState.subrace[raceId] ?? []).filter(id => id !== subId);
+                  }
+                }
+                this.#formState.subraceExclude = (this.#formState.subraceExclude ?? []).filter(id => id !== subId);
+              }
+            }
+          }
+
+          this.#updateBadge('race');
+          return;
+        }
+
+        if (group === 'subrace') {
+          if (this.#formState.subrace) {
+            for (const raceId of Object.keys(this.#formState.subrace)) {
+              this.#formState.subrace[raceId] = (this.#formState.subrace[raceId] ?? []).filter(id => id !== tagId);
+            }
+          }
+          this.#formState.subraceExclude = (this.#formState.subraceExclude ?? []).filter(id => id !== tagId);
+
+          if (next === 'include') {
+            const parentEl = chip.closest('[data-subrace-parent]');
+            const parentRaceId = parentEl?.dataset?.subraceParent;
+            if (parentRaceId) {
+              if (!this.#formState.subrace) this.#formState.subrace = {};
+              if (!this.#formState.subrace[parentRaceId]) this.#formState.subrace[parentRaceId] = [];
+              this.#formState.subrace[parentRaceId].push(tagId);
+            }
+          } else if (next === 'exclude') {
+            if (!this.#formState.subraceExclude) this.#formState.subraceExclude = [];
+            this.#formState.subraceExclude.push(tagId);
+          }
+
+          this.#updateBadge('race');
+          return;
+        }
+
+        const includeKey = group;
+        const excludeKey = `${group}Exclude`;
+        this.#formState[includeKey] = (this.#formState[includeKey] ?? []).filter(id => id !== tagId);
+        this.#formState[excludeKey] = (this.#formState[excludeKey] ?? []).filter(id => id !== tagId);
+        if (next === 'include') this.#formState[includeKey].push(tagId);
+        else if (next === 'exclude') this.#formState[excludeKey].push(tagId);
+
+        this.#updateBadge(group);
       });
     }
   }
 
-  #bindRaceChips() {
-    const raceChips = this.querySelectorAll('.cs-hero-box-form__race-item > .cs-hero-box-form__checkbox');
-    for (const chip of raceChips) {
-      const input = chip.querySelector('input[data-race-id]');
-      if (!input) continue;
+  
 
-      if (input.checked) chip.classList.add('active');
+  #updateBadge(group) {
+    let count = 0;
+    let sectionId = group;
 
-      this.addEvent(chip, 'click', (e) => {
-        e.preventDefault();
-        input.checked = !input.checked;
-        chip.classList.toggle('active', input.checked);
-
-        const raceId = input.dataset.raceId;
-        const subraceContainer = this.querySelector(`[data-subrace-parent="${raceId}"]`);
-        if (subraceContainer) {
-          subraceContainer.style.display = input.checked ? '' : 'none';
-          if (!input.checked) {
-            subraceContainer.querySelectorAll('.cs-hero-box-form__checkbox').forEach(sub => {
-              const subInput = sub.querySelector('input');
-              if (subInput) subInput.checked = false;
-              sub.classList.remove('active');
-            });
-          }
-        }
-      });
+    if (group === 'race') {
+      count = (this.#formState.race?.length ?? 0)
+        + (this.#formState.raceExclude?.length ?? 0)
+        + Object.values(this.#formState.subrace ?? {}).reduce((acc, arr) => acc + arr.length, 0)
+        + (this.#formState.subraceExclude?.length ?? 0);
+      sectionId = 'race';
+    } else if (group === 'age') {
+      count = (this.#formState.age?.length ?? 0) + (this.#formState.ageExclude?.length ?? 0);
+      sectionId = 'age';
+    } else if (group === 'role') {
+      count = (this.#formState.role?.length ?? 0) + (this.#formState.roleExclude?.length ?? 0);
+      sectionId = 'role';
+    } else if (group === 'other') {
+      count = (this.#formState.other?.length ?? 0) + (this.#formState.otherExclude?.length ?? 0);
+      sectionId = 'other';
     }
 
-    const subraceChips = this.querySelectorAll('.cs-hero-box-form__checkbox--subrace');
-    for (const chip of subraceChips) {
-      const input = chip.querySelector('input');
-      if (!input) continue;
+    const section = this.querySelector(`[data-section-id="${sectionId}"]`);
+    if (!section) return;
 
-      if (input.checked) chip.classList.add('active');
+    const header = section.querySelector('.cs-hero-box-form__section-header h4');
+    if (!header) return;
 
-      this.addEvent(chip, 'click', (e) => {
-        e.preventDefault();
-        input.checked = !input.checked;
-        chip.classList.toggle('active', input.checked);
+    let badge = header.querySelector('.cs-hero-box-form__badge');
 
-        if (input.checked) {
-          const parentRaceId = input.dataset.parentRace;
-          const raceCheckbox = this.querySelector(`input[data-race-id="${parentRaceId}"]`);
-          const raceChip = raceCheckbox?.closest('.cs-hero-box-form__checkbox');
-          if (raceCheckbox && !raceCheckbox.checked) {
-            raceCheckbox.checked = true;
-            if (raceChip) raceChip.classList.add('active');
-            const subraceContainer = this.querySelector(`[data-subrace-parent="${parentRaceId}"]`);
-            if (subraceContainer) subraceContainer.style.display = '';
-          }
-        }
-      });
+    if (count > 0) {
+      if (!badge) {
+        badge = document.createElement('span');
+        badge.className = 'cs-hero-box-form__badge';
+        header.appendChild(badge);
+      }
+      badge.textContent = count;
+    } else {
+      badge?.remove();
     }
+  }
+
+  async _onClearRandomCriteria() {
+    if (!this.#actor) return;
+
+    const confirmed = await foundry.applications.api.DialogV2.confirm({
+      window: { title: game.i18n.localize('cs-hero-box.form.clearRandom.title') },
+      content: `<p>${game.i18n.localize('cs-hero-box.form.clearRandom.content')}</p>`,
+      yes: { default: true },
+      no: { default: false },
+    });
+
+    if (!confirmed) return;
+
+    await this.#actor.unsetFlag(MODULE_ID, FLAGS.TOKEN_CRITERIA);
+    await this.#actor.unsetFlag(MODULE_ID, FLAGS.PREV_FORM_VALUES);
+
+    ui.notifications.info(game.i18n.localize('cs-hero-box.form.clearRandom.success'));
+    this.close();
   }
 
 

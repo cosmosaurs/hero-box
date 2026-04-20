@@ -46,15 +46,13 @@
             <div class="cs-hero-box-form__race-list">
               {{#each raceTags}}
                 <div class="cs-hero-box-form__race-item">
-                  <label class="cs-hero-box-form__checkbox">
-                    <input 
-                      type="checkbox" 
-                      name="race.{{id}}" 
-                      data-race-id="{{id}}"
-                      {{#if isSelected}}checked{{/if}} 
-                    />
-                    <span>{{label}}</span>
-                  </label>
+                  <button
+                    type="button"
+                    class="cs-hero-box-form__tri-chip cs-hero-box-form__tri-chip--race"
+                    data-tag-id="{{id}}"
+                    data-group="race"
+                    data-state="{{tagState}}"
+                  >{{label}}</button>
                   {{#if hasSubraces}}
                     <div 
                       class="cs-hero-box-form__subraces" 
@@ -62,15 +60,13 @@
                       {{#unless showSubraces}}style="display: none"{{/unless}}
                     >
                       {{#each subraces}}
-                        <label class="cs-hero-box-form__checkbox cs-hero-box-form__checkbox--subrace" data-subrace-label="{{label}}">
-                          <input 
-                            type="checkbox" 
-                            name="subrace.{{../id}}.{{id}}" 
-                            data-parent-race="{{../id}}"
-                            {{#if isSelected}}checked{{/if}} 
-                          />
-                          <span>{{label}}</span>
-                        </label>
+                        <button
+                          type="button"
+                          class="cs-hero-box-form__tri-chip cs-hero-box-form__tri-chip--subrace"
+                          data-tag-id="{{id}}"
+                          data-group="subrace"
+                          data-state="{{tagState}}"
+                        >{{label}}</button>
                       {{/each}}
                     </div>
                   {{/if}}
@@ -81,15 +77,14 @@
         </div>
       </div>
 
-      <div class="cs-hero-box-form__section" data-section-id="gender">
-        <div class="cs-hero-box-form__section-header">
-          <h4>
-            <i class="fas fa-venus-mars"></i>
-            {{localize "cs-hero-box.form.labels.gender"}}
-            {{#if selectedGenderLabel}}<span class="cs-hero-box-form__badge">{{selectedGenderLabel}}</span>{{/if}}
-          </h4>
-          <i class="fas fa-chevron-down cs-hero-box-form__section-toggle"></i>
-        </div>
+            <div class="cs-hero-box-form__section" data-section-id="gender">
+              <div class="cs-hero-box-form__section-header">
+                <h4>
+                  <i class="fas fa-venus-mars"></i>
+                  {{localize "cs-hero-box.form.labels.gender"}}
+                </h4>
+                <i class="fas fa-chevron-down cs-hero-box-form__section-toggle"></i>
+              </div>
         <div class="cs-hero-box-form__section-content">
           <div class="cs-hero-box-form__gender-buttons">
             {{#each genderOptions}}
@@ -120,8 +115,10 @@
             {{#each ageTags}}
               <button 
                 type="button" 
-                class="cs-hero-box-form__age-btn {{#if isSelected}}active{{/if}}"
-                data-age="{{id}}"
+                class="cs-hero-box-form__tri-chip cs-hero-box-form__tri-chip--age"
+                data-tag-id="{{id}}"
+                data-group="age"
+                data-state="{{tagState}}"
                 data-tooltip="{{label}}"
               >
                 <i class="fas {{icon}}"></i>
@@ -145,10 +142,14 @@
             <div class="cs-hero-box-form__scrollable-section">
               <div class="cs-hero-box-form__checkbox-group">
                 {{#each roleTags}}
-                  <label class="cs-hero-box-form__checkbox">
-                    <input type="checkbox" name="role.{{id}}" {{#if isSelected}}checked{{/if}} />
-                    <span>{{label}}</span>
-                  </label>
+                  <button
+                    type="button"
+                    class="cs-hero-box-form__tri-chip"
+                    data-tag-id="{{id}}"
+                    data-group="role"
+                    data-state="{{tagState}}"
+                    data-tooltip="{{label}}"
+                  >{{label}}</button>
                 {{/each}}
               </div>
             </div>
@@ -170,10 +171,14 @@
             <div class="cs-hero-box-form__scrollable-section">
               <div class="cs-hero-box-form__checkbox-group">
                 {{#each otherTags}}
-                  <label class="cs-hero-box-form__checkbox">
-                    <input type="checkbox" name="other.{{id}}" {{#if isSelected}}checked{{/if}} />
-                    <span>{{label}}</span>
-                  </label>
+                  <button
+                    type="button"
+                    class="cs-hero-box-form__tri-chip"
+                    data-tag-id="{{id}}"
+                    data-group="other"
+                    data-state="{{tagState}}"
+                    data-tooltip="{{label}}"
+                  >{{label}}</button>
                 {{/each}}
               </div>
             </div>
@@ -306,6 +311,21 @@
         <p class="cs-hero-box-hint">{{localize "cs-hero-box.form.sourceActor.hint"}}</p>
       </div>
     </div>
+
+    {{#if hasRandomCriteria}}
+      <div class="cs-hero-box-form__section cs-hero-box-form__section--static" data-section-id="clearRandom">
+        <div class="cs-hero-box-form__section-content">
+          <button
+            type="button"
+            class="cs-hero-box-form__clear-random-btn"
+            data-action="clearRandomCriteria"
+          >
+            <i class="fas fa-ban"></i>
+            {{localize "cs-hero-box.form.clearRandom.button"}}
+          </button>
+        </div>
+      </div>
+    {{/if}}
 
   </div>
 </div>
