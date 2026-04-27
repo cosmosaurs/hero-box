@@ -1,13 +1,13 @@
 {
   "id": "cs-hero-box",
   "title": "Hero in a Box",
-  "version": "1.0.1",
+  "version": "1.1.0",
   "compatibility": {
     "minimum": "13",
     "verified": "14"
   },
   "url": "https://github.com/cosmosaurs/hero-box",
-  "download": "https://github.com/cosmosaurs/hero-box/archive/1.0.1.zip",
+  "download": "https://github.com/cosmosaurs/hero-box/archive/1.1.0.zip",
   "manifest": "https://github.com/cosmosaurs/hero-box/releases/latest/download/module.json",
   "readme": "README.md",
   "bugs": "https://github.com/cosmosaurs/click-to-scene/issues",
