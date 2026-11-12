@@ -1,4 +1,4 @@
-<div class="cs-hero-box-image-import">
+div class="cs-hero-box-image-import">
   <nav class="cs-hero-box-image-import__tabs">
     <button 
       type="button" 
@@ -90,6 +90,14 @@
         </button>
       </div>
       <p class="cs-hero-box-hint">{{localize "cs-hero-box.imageImport.portraitFolderHint"}}</p>
+    </div>
+
+    <div class="form-group">
+      <label class="cs-hero-box-image-import__checkbox-inline">
+        <input type="checkbox" name="recursive" {{#if recursive}}checked{{/if}} />
+        {{localize "cs-hero-box.imageImport.recursive"}}
+      </label>
+      <p class="cs-hero-box-hint">{{localize "cs-hero-box.imageImport.recursiveHint"}}</p>
     </div>
   {{/if}}
 

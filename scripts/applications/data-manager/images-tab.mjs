@@ -1,25 +1,23 @@
-/**
+**
  * @fileoverview Data Manager "Images" tab: grid, filters, worker offload, selection, previews.
  */
 
-import { TAG_CATEGORY } from '../../constants/tags.mjs';
 import { MODULE_ID, FLAGS } from '../../constants/index.mjs';
+import { TAG_CATEGORY } from '../../constants/tags.mjs';
 import { logger } from '../../utils/index.mjs';
 import { buildSidebarCategories, handleTagToggle } from '../../utils/sidebar.mjs';
 import { tagIndex, tag, source } from '../../services/index.mjs';
-import { groupTagsByCategory, filterByTagGroups } from '../../utils/tags.mjs';
-import { parseTagsFromFileName } from '../../utils/filepicker.mjs';
+import { groupTagsByCategory, filterByTagGroups, expandParentTags } from '../../utils/tags.mjs';
+import { parseTagsFromFileName, parseTagsFromPath } from '../../utils/filepicker.mjs';
 import { filterWorker } from '../../utils/filter-worker-bridge.mjs';
 import { CollapsedGroupsManager } from '../../utils/collapsed-groups.mjs';
 import { MODE } from '../import-image/image-import.mjs';
-import { getSetting, setSetting } from '../../settings.mjs';
-import { SETTINGS } from '../../constants/settings.mjs';
 
 /** Tab logic for indexed images; `app` is the parent DataManager. */
 export class ImagesTab {
   #app = null;
   #filters = { tags: [], search: '' };
-  #collapsedGroups = new Set();
+  #collapsedManager = null;
 
   #selectedImages = new Set();
   #lastSelectedUuid = null;
@@ -43,16 +41,20 @@ export class ImagesTab {
   #resizeObserver = null;
 
   #workerInitialized = false;
+  #brokenImageMap = new Map();
+  #brokenOnly = false;
+  #checkingBroken = false;
 
   /** @param {import('./data-manager.mjs').DataManager} app */
   constructor(app) {
     this.#app = app;
+    this.#collapsedManager = new CollapsedGroupsManager(app, 'images');
   }
 
   /** @returns {string} */
   get searchQuery() { return this.#filters.search; }
   /** @returns {boolean} */
-  get hasFilters() { return this.#filters.tags.length > 0 || this.#filters.search.length > 0; }
+  get hasFilters() { return this.#filters.tags.length > 0 || this.#filters.search.length > 0 || this.#brokenOnly; }
 
   /** @param {string} query */
   setSearchQuery(query) {
@@ -64,12 +66,13 @@ export class ImagesTab {
   }
 
   /**
-   * @param {{ race?: string[], gender?: string[], age?: string[], role?: string[], subrace?: Record<string, string[]> }} filters
+   * @param {{ race?: string[], gender?: string[], age?: string[], roleGroup?: string[], role?: string[], subrace?: Record<string, string[]> }} filters
    */
   applyInitialFilters(filters) {
     if (filters.race?.length) this.#filters.tags.push(...filters.race);
     if (filters.gender?.length) this.#filters.tags.push(...filters.gender);
     if (filters.age?.length) this.#filters.tags.push(...filters.age);
+    if (filters.roleGroup?.length) this.#filters.tags.push(...filters.roleGroup);
     if (filters.role?.length) this.#filters.tags.push(...filters.role);
     if (filters.subrace) {
       for (const subraces of Object.values(filters.subrace)) {
@@ -83,6 +86,7 @@ export class ImagesTab {
   /** Clear filters, selection, and image caches. */
   reset() {
     this.#filters = { tags: [], search: '' };
+    this.#brokenOnly = false;
     this.#clearSelection();
     this.#invalidateAll();
   }
@@ -116,6 +120,7 @@ export class ImagesTab {
     const effectiveSelectedCount = this.#selectAllActive
       ? totalImages
       : this.#selectedImages.size;
+    const totalIndexed = this.#statsCache.totalImages ?? 0;
 
     return {
       totalImages,
@@ -123,6 +128,12 @@ export class ImagesTab {
       hasSelection: effectiveSelectedCount > 0,
       allSelected: this.#selectAllActive,
       tagsByCategory,
+      hasIndexedImages: totalIndexed > 0 || this.#brokenOnly,
+      brokenOnly: this.#brokenOnly,
+      brokenCount: this.#brokenImageMap.size,
+      brokenFilterLabel: game.i18n.format('cs-hero-box.dataManager.brokenFilterActive', {
+        count: this.#brokenImageMap.size,
+      }),
     };
   }
 
@@ -138,15 +149,21 @@ export class ImagesTab {
   #ensureTagFiltered() {
     if (this.#lastTagVersion === this.#tagFilterVersion && this.#tagFilteredImages) return;
 
+    let baseImages = tagIndex.getAllImagesArray();
+    if (this.#brokenOnly) {
+      baseImages = baseImages.filter(img => this.#brokenImageMap.has(img.uuid));
+    }
+
     if (this.#filters.tags.length > 0) {
       const tagGroups = groupTagsByCategory(this.#filters.tags, tag);
       this.#tagFilteredImages = filterByTagGroups(
-        tagIndex.getAllImagesArray(),
+        baseImages,
         tagGroups,
-        (img) => img.tags
+        (img) => img.tags,
+        tag
       );
     } else {
-      this.#tagFilteredImages = tagIndex.getAllImagesArray();
+      this.#tagFilteredImages = baseImages;
     }
 
     this.#lastTagVersion = this.#tagFilterVersion;
@@ -196,7 +213,7 @@ export class ImagesTab {
     this.#setupVirtualScroll();
     this.#restoreScrollPosition();
     this.#bindCardInteractions();
-    this.#restoreCollapsedGroups();
+    this.#collapsedManager.restore();
   }
 
   /** Create `VirtualScrollGrid` and `ResizeObserver` for the image grid. */
@@ -235,16 +252,29 @@ export class ImagesTab {
   #createCardElement(img) {
     const isSelected = this.#selectAllActive || this.#selectedImages.has(img.uuid);
     const isLastSelected = img.uuid === this.#lastSelectedUuid;
-    const previewUrl = img.portraitUrl || img.tokenUrl;
+    const brokenInfo = this.#brokenImageMap.get(img.uuid);
+    const esc = foundry.utils.escapeHTML;
+
+    let rawPreviewUrl = img.portraitUrl || img.tokenUrl || '';
+    if (brokenInfo?.portraitBroken && !brokenInfo.tokenBroken && img.tokenUrl) {
+      rawPreviewUrl = img.tokenUrl;
+    }
+
+    const previewUrl = esc(rawPreviewUrl);
+    const safeFileName = esc(img.fileName || '');
+    const brokenBadgeHtml = brokenInfo
+      ? `<span class="cs-hero-box-data-manager__broken-badge"><i class="fas fa-unlink"></i> 404</span>`
+      : '';
 
     const card = document.createElement('div');
     card.className = 'cs-hero-box-data-manager__card';
     if (isSelected) card.classList.add('selected');
     if (isLastSelected) card.classList.add('last-selected');
+    if (brokenInfo) card.classList.add('is-broken');
     card.dataset.uuid = img.uuid;
     card.dataset.action = 'selectImage';
 
-    card.innerHTML = `<div class="cs-hero-box-data-manager__image-container"><img src="${previewUrl}" alt="${img.fileName}" loading="lazy" /></div><div class="cs-hero-box-data-manager__card-info"><span class="cs-hero-box-data-manager__card-name" title="${img.fileName}">${img.fileName}</span></div>`;
+    card.innerHTML = `<div class="cs-hero-box-data-manager__image-container"><img src="${previewUrl}" alt="${safeFileName}" loading="lazy" />${brokenBadgeHtml}</div><div class="cs-hero-box-data-manager__card-info"><span class="cs-hero-box-data-manager__card-name" title="${safeFileName}">${safeFileName}</span></div>`;
 
     return card;
   }
@@ -345,25 +375,56 @@ export class ImagesTab {
     if (saved) {
       this.#saveScrollPosition();
       this.#clearSelection();
-      this.#refreshAfterEditInPlace();
+      if (this.#brokenImageMap.size > 0) {
+        await this.#recheckEditedBrokenState(uuids);
+      }
+      if (this.#brokenOnly) {
+        this.#invalidateAll();
+        this.#app.render();
+      } else {
+        await this.#refreshAfterEditInPlace();
+      }
+    }
+  }
+
+  /**
+   * Re-validate broken status for specific image UUIDs after inline editing.
+   * @param {string[]} uuids
+   */
+  async #recheckEditedBrokenState(uuids) {
+    for (const uuid of uuids) {
+      const img = tagIndex.getByUuid(uuid);
+      if (!img) {
+        this.#brokenImageMap.delete(uuid);
+        continue;
+      }
+      const hasAnyUrl = Boolean(img.tokenUrl || img.portraitUrl);
+      const tokenOk = img.tokenUrl ? await this.#checkUrlExists(img.tokenUrl) : true;
+      const portraitOk = img.portraitUrl ? await this.#checkUrlExists(img.portraitUrl) : true;
+      const tokenBroken = !hasAnyUrl || (Boolean(img.tokenUrl) && !tokenOk);
+      const portraitBroken = Boolean(img.portraitUrl) && !portraitOk;
+
+      if (tokenBroken || portraitBroken) {
+        this.#brokenImageMap.set(uuid, { tokenBroken, portraitBroken });
+      } else {
+        this.#brokenImageMap.delete(uuid);
+      }
+    }
+    if (this.#brokenOnly && this.#brokenImageMap.size === 0) {
+      this.#brokenOnly = false;
     }
   }
 
   /** Refresh indexed rows and virtual list after inline flag edits. */
-  #refreshAfterEditInPlace() {
+  async #refreshAfterEditInPlace() {
     this.#statsCache = null;
 
     if (this.#tagFilteredImages) {
-      for (let i = 0; i < this.#tagFilteredImages.length; i++) {
-        const uuid = this.#tagFilteredImages[i].uuid;
-        const fresh = tagIndex.getByUuid(uuid);
-        if (fresh) {
-          this.#tagFilteredImages[i] = fresh;
-        }
-      }
+      this.#tagFilteredImages = this.#tagFilteredImages.map(img => tagIndex.getByUuid(img.uuid) ?? img);
     }
 
     this.#lastSearchVersion = -1;
+    await this.#ensureSearchFiltered();
 
     if (this.#virtualScroll) {
       this.#virtualScroll.updateItems(this.#filteredImages ?? this.#tagFilteredImages ?? []);
@@ -434,8 +495,12 @@ export class ImagesTab {
           const imageData = page.getFlag(MODULE_ID, FLAGS.IMAGE_DATA) ?? {};
           const currentTags = new Set(imageData.tags ?? []);
 
-          const fileName = (imageData.portraitUrl || imageData.tokenUrl || page.name || '').split('/').pop();
-          const parsedTags = parseTagsFromFileName(fileName, knownTagIds);
+          const rawTags = [
+            ...(imageData.tokenUrl ? parseTagsFromPath(imageData.tokenUrl, knownTagIds) : []),
+            ...(imageData.portraitUrl ? parseTagsFromPath(imageData.portraitUrl, knownTagIds) : []),
+            ...(page.name ? parseTagsFromFileName(page.name, knownTagIds) : []),
+          ];
+          const parsedTags = expandParentTags([...new Set(rawTags)], tag);
 
           let hasChanges = false;
           for (const tagId of parsedTags) {
@@ -499,7 +564,156 @@ export class ImagesTab {
     }
 
     this.#saveScrollPosition();
-    this.#refreshAfterEditInPlace();
+    await this.#refreshAfterEditInPlace();
+  }
+
+  /**
+   * Check whether a single URL resolves with an OK HTTP status.
+   * @param {string} url
+   * @returns {Promise<boolean>}
+   */
+  async #checkUrlExists(url) {
+    if (!url) return true;
+    try {
+      const headResp = await fetch(url, { method: 'HEAD', cache: 'no-cache' });
+      if (headResp.ok) return true;
+      if (headResp.status === 405 || headResp.status === 501) {
+        const getResp = await fetch(url, { method: 'GET', cache: 'no-cache' });
+        return getResp.ok;
+      }
+      return false;
+    } catch {
+      return false;
+    }
+  }
+
+  /**
+   * Scan all indexed images for missing (`404`) token/portrait files, or toggle off the active broken filter.
+   * @returns {Promise<void>}
+   */
+  async onCheckBrokenImages() {
+    if (this.#checkingBroken) return;
+
+    if (this.#brokenOnly) {
+      this.#brokenOnly = false;
+      this.#clearSelection();
+      this.#invalidateAll();
+      this.#app.render();
+      return;
+    }
+
+    const allImages = tagIndex.getAllImagesArray();
+    if (allImages.length === 0) return;
+
+    this.#checkingBroken = true;
+
+    const uniqueUrls = new Set();
+    for (const img of allImages) {
+      if (img.tokenUrl) uniqueUrls.add(img.tokenUrl);
+      if (img.portraitUrl) uniqueUrls.add(img.portraitUrl);
+    }
+
+    const urlList = Array.from(uniqueUrls);
+    const totalUrls = urlList.length || 1;
+    let checkedUrls = 0;
+
+    const toolbar = this.#app.querySelector('.cs-hero-box-data-manager__toolbar');
+    let progressEl = null;
+
+    if (toolbar) {
+      progressEl = document.createElement('div');
+      progressEl.className = 'cs-hero-box-data-manager__delete-progress';
+      const initialText = foundry.utils.escapeHTML(
+        game.i18n.format('cs-hero-box.dataManager.brokenChecking', { current: 0, total: totalUrls })
+      );
+      progressEl.innerHTML = `
+        <div class="cs-hero-box-data-manager__progress-track">
+          <div class="cs-hero-box-data-manager__progress-bar" style="width: 0%"></div>
+        </div>
+        <span class="cs-hero-box-data-manager__progress-text">${initialText}</span>
+      `;
+
+      const toolbarInfo = toolbar.querySelector('.cs-hero-box-data-manager__toolbar-info');
+      const toolbarActions = toolbar.querySelector('.cs-hero-box-data-manager__toolbar-actions');
+      if (toolbarInfo) toolbarInfo.style.display = 'none';
+      if (toolbarActions) toolbarActions.style.display = 'none';
+      toolbar.prepend(progressEl);
+    }
+
+    const updateProgress = () => {
+      if (!progressEl) return;
+      const pct = Math.round((checkedUrls / totalUrls) * 100);
+      const bar = progressEl.querySelector('.cs-hero-box-data-manager__progress-bar');
+      const text = progressEl.querySelector('.cs-hero-box-data-manager__progress-text');
+      if (bar) bar.style.width = `${pct}%`;
+      if (text) {
+        text.textContent = game.i18n.format('cs-hero-box.dataManager.brokenChecking', {
+          current: checkedUrls,
+          total: totalUrls,
+        });
+      }
+    };
+
+    const urlStatus = new Map();
+    const CONCURRENCY = 20;
+    let cursor = 0;
+
+    try {
+      const workers = Array.from({ length: Math.min(CONCURRENCY, urlList.length) }, async () => {
+        while (cursor < urlList.length) {
+          const idx = cursor++;
+          const url = urlList[idx];
+          const ok = await this.#checkUrlExists(url);
+          urlStatus.set(url, ok);
+          checkedUrls++;
+          if (checkedUrls % 5 === 0 || checkedUrls === urlList.length) {
+            updateProgress();
+          }
+        }
+      });
+
+      await Promise.all(workers);
+
+      this.#brokenImageMap.clear();
+      for (const img of allImages) {
+        const hasAnyUrl = Boolean(img.tokenUrl || img.portraitUrl);
+        const tokenBroken = !hasAnyUrl || (Boolean(img.tokenUrl) && urlStatus.get(img.tokenUrl) === false);
+        const portraitBroken = Boolean(img.portraitUrl) && urlStatus.get(img.portraitUrl) === false;
+
+        if (tokenBroken || portraitBroken) {
+          this.#brokenImageMap.set(img.uuid, { tokenBroken, portraitBroken });
+        }
+      }
+    } finally {
+      this.#checkingBroken = false;
+      if (progressEl) {
+        progressEl.remove();
+        const toolbarInfo = toolbar?.querySelector('.cs-hero-box-data-manager__toolbar-info');
+        const toolbarActions = toolbar?.querySelector('.cs-hero-box-data-manager__toolbar-actions');
+        if (toolbarInfo) toolbarInfo.style.display = '';
+        if (toolbarActions) toolbarActions.style.display = '';
+      }
+    }
+
+    const brokenCount = this.#brokenImageMap.size;
+    if (brokenCount === 0) {
+      this.#brokenOnly = false;
+      ui.notifications.info(
+        game.i18n.format('cs-hero-box.dataManager.brokenNone', { total: allImages.length })
+      );
+    } else {
+      this.#brokenOnly = true;
+      this.#clearSelection();
+      ui.notifications.warn(
+        game.i18n.format('cs-hero-box.dataManager.brokenFound', {
+          count: brokenCount,
+          total: allImages.length,
+        })
+      );
+    }
+
+    this.#invalidateAll();
+    this.#app.render();
   }
 
   /** @returns {string[]} */
@@ -523,9 +737,18 @@ export class ImagesTab {
 
     const count = uuids.length;
 
+    let contentHtml;
+    if (count === 1) {
+      const single = tagIndex.getByUuid(uuids[0]);
+      const name = foundry.utils.escapeHTML(single?.fileName || uuids[0]);
+      contentHtml = `<p>${game.i18n.format('cs-hero-box.dataManager.deleteConfirm.content', { name })}</p>`;
+    } else {
+      contentHtml = `<p>${game.i18n.format('cs-hero-box.dataManager.deleteConfirm.contentMultiple', { count })}</p>`;
+    }
+
     const confirmed = await foundry.applications.api.DialogV2.confirm({
       window: { title: game.i18n.localize('cs-hero-box.dataManager.deleteConfirm.title') },
-      content: `<p>${game.i18n.format('cs-hero-box.dataManager.deleteConfirm.content', { name: `${count} images` })}</p>`,
+      content: contentHtml,
       yes: { default: true },
       no: { default: false },
     });
@@ -534,6 +757,12 @@ export class ImagesTab {
 
     this.#saveScrollPosition();
     this.#clearSelection();
+    for (const uuid of uuids) {
+      this.#brokenImageMap.delete(uuid);
+    }
+    if (this.#brokenOnly && this.#brokenImageMap.size === 0) {
+      this.#brokenOnly = false;
+    }
     tagIndex.removeImages(uuids);
     this.invalidateCache();
     this.#app.render();
@@ -635,13 +864,22 @@ export class ImagesTab {
   /** Full-size `ImagePopout` for card preview URL. */
   onOpenImage(event, target) {
     event.stopPropagation();
-    new ImagePopout(target.dataset.url).render(true);
+    const src = target.dataset.url;
+    if (!src) return;
+    if (foundry.applications?.apps?.ImagePopout) {
+      new foundry.applications.apps.ImagePopout({ src }).render({ force: true });
+    } else if (globalThis.ImagePopout) {
+      new globalThis.ImagePopout(src).render(true);
+    }
   }
 
   /** Sidebar tag filter; clears selection and invalidates caches. */
   onToggleTag(event, target) {
     const tagId = target.dataset.tag;
     handleTagToggle(this.#filters, tagId, tag);
+    if (tag.get(tagId)?.category === TAG_CATEGORY.ROLE_GROUP && this.#filters.tags.includes(tagId)) {
+      this.#collapsedManager.setSubTreeExpanded(tagId, true);
+    }
     this.#tagFilterVersion++;
     this.#searchFilterVersion++;
     this.#tagFilteredImages = null;
@@ -653,17 +891,12 @@ export class ImagesTab {
 
   /** Collapse/expand sidebar category group. */
   onToggleTagGroup(event, target) {
-    const group = target.closest('.cs-hero-box-data-manager__tag-group');
-    if (group) {
-      const category = group.dataset.category;
-      group.classList.toggle('collapsed');
-      if (group.classList.contains('collapsed')) {
-        this.#collapsedGroups.add(category);
-      } else {
-        this.#collapsedGroups.delete(category);
-      }
-      this.#saveCollapsedState();
-    }
+    this.#collapsedManager.toggle(target);
+  }
+
+  /** Collapse/expand sidebar role-group subtree. */
+  onToggleRoleGroupTree(event, target) {
+    this.#collapsedManager.toggleSubTree(target);
   }
 
   /** @returns {string[]} */
@@ -729,6 +962,9 @@ export class ImagesTab {
 
   /** Delegated hover handlers for card detail popup (non-picker). */
   #bindCardInteractions() {
+    for (const cleanup of this.#cardListenerCleanups) cleanup();
+    this.#cardListenerCleanups = [];
+
     if (this.#app.pickerMode) return;
     const container = this.#app.querySelector('.cs-hero-box-data-manager__grid-container');
     if (!container) return;
@@ -800,18 +1036,36 @@ export class ImagesTab {
       this.#popupElement.addEventListener('mouseleave', () => this.#scheduleHidePopup());
     }
 
+    const esc = foundry.utils.escapeHTML;
     const tagsDisplay = img.tags.length > 0
-      ? img.tags.map(t => tag.getLabel(t)).join(', ') : '';
+      ? esc(img.tags.map(t => tag.getLabel(t)).join(', ')) : '';
     const tagsHtml = tagsDisplay
-      ? `<strong>${game.i18n.localize('cs-hero-box.dataManager.tagsTitle')}:</strong> ${tagsDisplay}`
-      : `<em>${game.i18n.localize('cs-hero-box.editor.noTags')}</em>`;
+      ? `<strong>${esc(game.i18n.localize('cs-hero-box.dataManager.tagsTitle'))}:</strong> ${tagsDisplay}`
+      : `<em>${esc(game.i18n.localize('cs-hero-box.editor.noTags'))}</em>`;
     const sourceName = source.getSourceName(img.sourceId);
     const sourceHtml = sourceName
-      ? `<div class="cs-hero-box-card-popup__source"><i class="fas fa-database"></i> ${sourceName}</div>` : '';
-    const tokenLabel = game.i18n.localize('cs-hero-box.editor.tokenPreview');
-    const portraitLabel = game.i18n.localize('cs-hero-box.editor.portraitPreview');
+      ? `<div class="cs-hero-box-card-popup__source"><i class="fas fa-database"></i> ${esc(sourceName)}</div>` : '';
+    const tokenLabel = esc(game.i18n.localize('cs-hero-box.editor.tokenPreview'));
+    const portraitLabel = esc(game.i18n.localize('cs-hero-box.editor.portraitPreview'));
+    const safeTokenUrl = img.tokenUrl ? esc(img.tokenUrl) : '';
+    const safePortraitUrl = img.portraitUrl ? esc(img.portraitUrl) : '';
 
-    this.#popupElement.innerHTML = `<div class="cs-hero-box-card-popup__images"><div class="cs-hero-box-card-popup__image">${img.tokenUrl ? `<img src="${img.tokenUrl}" alt="Token" />` : `<div class="cs-hero-box-card-popup__placeholder"><i class="fas fa-user-circle"></i></div>`}<span>${tokenLabel}</span></div><div class="cs-hero-box-card-popup__image">${img.portraitUrl ? `<img src="${img.portraitUrl}" alt="Portrait" />` : `<div class="cs-hero-box-card-popup__placeholder"><i class="fas fa-portrait"></i></div>`}<span>${portraitLabel}</span></div></div><div class="cs-hero-box-card-popup__tags">${tagsHtml}</div>${sourceHtml}`;
+    const brokenInfo = this.#brokenImageMap.get(uuid);
+    let brokenHtml = '';
+    if (brokenInfo) {
+      const brokenParts = [];
+      if (brokenInfo.tokenBroken) {
+        brokenParts.push(esc(game.i18n.localize('cs-hero-box.dataManager.brokenToken')));
+      }
+      if (brokenInfo.portraitBroken) {
+        brokenParts.push(esc(game.i18n.localize('cs-hero-box.dataManager.brokenPortrait')));
+      }
+      if (brokenParts.length > 0) {
+        brokenHtml = `<div class="cs-hero-box-card-popup__broken"><i class="fas fa-exclamation-triangle"></i> ${brokenParts.join(' • ')}</div>`;
+      }
+    }
+
+    this.#popupElement.innerHTML = `<div class="cs-hero-box-card-popup__images"><div class="cs-hero-box-card-popup__image">${safeTokenUrl ? `<img src="${safeTokenUrl}" alt="Token" />` : `<div class="cs-hero-box-card-popup__placeholder"><i class="fas fa-user-circle"></i></div>`}<span>${tokenLabel}</span></div><div class="cs-hero-box-card-popup__image">${safePortraitUrl ? `<img src="${safePortraitUrl}" alt="Portrait" />` : `<div class="cs-hero-box-card-popup__placeholder"><i class="fas fa-portrait"></i></div>`}<span>${portraitLabel}</span></div></div>${brokenHtml}<div class="cs-hero-box-card-popup__tags">${tagsHtml}</div>${sourceHtml}`;
 
     const cardRect = card.getBoundingClientRect();
     const popupWidth = 280;
@@ -898,24 +1152,6 @@ export class ImagesTab {
       .forEach(btn => btn.disabled = !hasSelection);
   }
 
-  #restoreCollapsedGroups() {
-    try {
-      const saved = getSetting(SETTINGS.COLLAPSED_DATA_MANAGER);
-      const tabCollapsed = saved?.images ?? [];
-      this.#collapsedGroups = new Set(tabCollapsed);
-    } catch {}
-
-    for (const category of this.#collapsedGroups) {
-      const group = this.#app.querySelector(`.cs-hero-box-data-manager__tag-group[data-category="${category}"]`);
-      if (group) {
-        group.classList.add('no-transition', 'collapsed');
-        requestAnimationFrame(() => {
-          requestAnimationFrame(() => group.classList.remove('no-transition'));
-        });
-      }
-    }
-  }
-
   /** Remove listeners, virtual scroll, popup, and filter worker. */
   destroy() {
     for (const cleanup of this.#cardListenerCleanups) cleanup();
@@ -944,14 +1180,6 @@ export class ImagesTab {
     } catch {}
     this.#workerInitialized = false;
   }
-
-  #saveCollapsedState() {
-    try {
-      const saved = getSetting(SETTINGS.COLLAPSED_DATA_MANAGER) ?? {};
-      saved.images = Array.from(this.#collapsedGroups);
-      setSetting(SETTINGS.COLLAPSED_DATA_MANAGER, saved);
-    } catch {}
-  }
 }
 
 
@@ -969,7 +1197,7 @@ class VirtualScrollGrid {
 
   #cardWidth = 0;
   #cardHeight = 0;
-  #gap = 6;
+  #gap = 8;
   #measured = false;
 
   #renderedCards = new Map();

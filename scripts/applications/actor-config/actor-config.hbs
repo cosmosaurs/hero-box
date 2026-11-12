@@ -1,4 +1,4 @@
-<div class="cs-hero-box-form">
+div class="cs-hero-box-form">
   <nav class="cs-hero-box-form__mode-tabs">
     <button 
       type="button" 
@@ -139,17 +139,57 @@
             <i class="fas fa-chevron-down cs-hero-box-form__section-toggle"></i>
           </div>
           <div class="cs-hero-box-form__section-content">
+            <div class="cs-hero-box-form__race-search-wrap">
+              <input
+                type="text"
+                class="cs-hero-box-form__race-search"
+                placeholder="{{localize 'cs-hero-box.dataManager.searchPlaceholder'}}"
+                value="{{roleSearchQuery}}"
+              />
+            </div>
             <div class="cs-hero-box-form__scrollable-section">
-              <div class="cs-hero-box-form__checkbox-group">
+              <div class="cs-hero-box-form__race-list">
                 {{#each roleTags}}
-                  <button
-                    type="button"
-                    class="cs-hero-box-form__tri-chip"
-                    data-tag-id="{{id}}"
-                    data-group="role"
-                    data-state="{{tagState}}"
-                    data-tooltip="{{label}}"
-                  >{{label}}</button>
+                  <div class="cs-hero-box-form__race-item">
+                    <div class="cs-hero-box-form__group-header-row">
+                      <button
+                        type="button"
+                        class="cs-hero-box-form__tri-chip cs-hero-box-form__tri-chip--race {{#if isRoleGroup}}cs-hero-box-form__tri-chip--role-group{{/if}}"
+                        data-tag-id="{{id}}"
+                        data-group="{{#if isRoleGroup}}roleGroup{{else}}role{{/if}}"
+                        data-state="{{tagState}}"
+                      >
+                        {{#if isRoleGroup}}<i class="fas fa-layer-group cs-hero-box-form__group-chip-icon"></i>{{/if}}
+                        <span>{{label}}</span>
+                      </button>
+                      {{#if hasRoles}}
+                        <button
+                          type="button"
+                          class="cs-hero-box-form__group-expand-btn {{#if showRoles}}expanded{{/if}}"
+                          data-role-group-expand="{{id}}"
+                        >
+                          <i class="fas fa-chevron-down"></i>
+                        </button>
+                      {{/if}}
+                    </div>
+                    {{#if hasRoles}}
+                      <div
+                        class="cs-hero-box-form__subraces"
+                        data-role-group-parent="{{id}}"
+                        {{#unless showRoles}}style="display: none"{{/unless}}
+                      >
+                        {{#each roles}}
+                          <button
+                            type="button"
+                            class="cs-hero-box-form__tri-chip cs-hero-box-form__tri-chip--subrace"
+                            data-tag-id="{{id}}"
+                            data-group="role"
+                            data-state="{{tagState}}"
+                          >{{label}}</button>
+                        {{/each}}
+                      </div>
+                    {{/if}}
+                  </div>
                 {{/each}}
               </div>
             </div>
@@ -185,39 +225,6 @@
           </div>
         </div>
       {{/if}}
-
-      <div class="cs-hero-box-form__section" data-section-id="nameSettings">
-        <div class="cs-hero-box-form__section-header">
-          <h4>
-            <i class="fas fa-signature"></i>
-            {{localize "cs-hero-box.form.labels.nameSettings"}}
-          </h4>
-          <i class="fas fa-chevron-down cs-hero-box-form__section-toggle"></i>
-        </div>
-        <div class="cs-hero-box-form__section-content">
-          <div class="cs-hero-box-form__slider-group">
-            <label>{{localize "cs-hero-box.form.labels.nicknameChance"}}</label>
-            <div class="cs-hero-box-form__slider-row">
-              <input type="range" name="nicknameChance" min="0" max="100" value="{{nicknameChance}}" />
-              <input type="number" name="nicknameChanceNum" min="0" max="100" value="{{nicknameChance}}" class="cs-hero-box-form__slider-num" />
-            </div>
-          </div>
-          <div class="cs-hero-box-form__slider-group">
-            <label>{{localize "cs-hero-box.form.labels.nicknameOnlyChance"}}</label>
-            <div class="cs-hero-box-form__slider-row">
-              <input type="range" name="nicknameOnlyChance" min="0" max="100" value="{{nicknameOnlyChance}}" />
-              <input type="number" name="nicknameOnlyChanceNum" min="0" max="100" value="{{nicknameOnlyChance}}" class="cs-hero-box-form__slider-num" />
-            </div>
-          </div>
-          <div class="cs-hero-box-form__slider-group">
-            <label>{{localize "cs-hero-box.form.labels.noLastNameChance"}}</label>
-            <div class="cs-hero-box-form__slider-row">
-              <input type="range" name="noLastNameChance" min="0" max="100" value="{{noLastNameChance}}" />
-              <input type="number" name="noLastNameChanceNum" min="0" max="100" value="{{noLastNameChance}}" class="cs-hero-box-form__slider-num" />
-            </div>
-          </div>
-        </div>
-      </div>
 
     {{/if}}
 
@@ -259,6 +266,39 @@
         </div>
       </div>
     {{/if}}
+
+    <div class="cs-hero-box-form__section" data-section-id="nameSettings">
+      <div class="cs-hero-box-form__section-header">
+        <h4>
+          <i class="fas fa-signature"></i>
+          {{localize "cs-hero-box.form.labels.nameSettings"}}
+        </h4>
+        <i class="fas fa-chevron-down cs-hero-box-form__section-toggle"></i>
+      </div>
+      <div class="cs-hero-box-form__section-content">
+        <div class="cs-hero-box-form__slider-group">
+          <label>{{localize "cs-hero-box.form.labels.nicknameChance"}}</label>
+          <div class="cs-hero-box-form__slider-row">
+            <input type="range" name="nicknameChance" min="0" max="100" value="{{nicknameChance}}" />
+            <input type="number" name="nicknameChanceNum" min="0" max="100" value="{{nicknameChance}}" class="cs-hero-box-form__slider-num" />
+          </div>
+        </div>
+        <div class="cs-hero-box-form__slider-group">
+          <label>{{localize "cs-hero-box.form.labels.nicknameOnlyChance"}}</label>
+          <div class="cs-hero-box-form__slider-row">
+            <input type="range" name="nicknameOnlyChance" min="0" max="100" value="{{nicknameOnlyChance}}" />
+            <input type="number" name="nicknameOnlyChanceNum" min="0" max="100" value="{{nicknameOnlyChance}}" class="cs-hero-box-form__slider-num" />
+          </div>
+        </div>
+        <div class="cs-hero-box-form__slider-group">
+          <label>{{localize "cs-hero-box.form.labels.noLastNameChance"}}</label>
+          <div class="cs-hero-box-form__slider-row">
+            <input type="range" name="noLastNameChance" min="0" max="100" value="{{noLastNameChance}}" />
+            <input type="number" name="noLastNameChanceNum" min="0" max="100" value="{{noLastNameChance}}" class="cs-hero-box-form__slider-num" />
+          </div>
+        </div>
+      </div>
+    </div>
 
     <div class="cs-hero-box-form__section cs-hero-box-form__section--static" data-section-id="mode">
       <div class="cs-hero-box-form__section-header cs-hero-box-form__section-header--static">

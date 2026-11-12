@@ -1,4 +1,4 @@
-/**
+**
  * @fileoverview Sidebar category trees and filter toggle handling for data manager UIs.
  */
 
@@ -21,6 +21,7 @@ export function buildSidebarCategories(options = {}) {
     hideGender = false,
     hideAge = false,
     hideSubrace = false,
+    hideRoleGroup = false,
     hideRole = false,
     hideOther = false,
     typeOptions = [],
@@ -135,20 +136,80 @@ export function buildSidebarCategories(options = {}) {
     };
   }
 
-  if (!hideRole) {
-    const roles = tag.getRoles().map(t => ({
+  if (!hideRoleGroup && hideRole) {
+    const roleGroups = tag.getRoleGroups().map(t => ({
       id: t.id,
       label: tag.getLabel(t.id),
       count: tagCounts.get(t.id) ?? 0,
       isActive: activeTagsSet.has(t.id),
     }));
 
-    if (roles.some(t => t.count > 0) || showCategoryFilter) {
+    if (roleGroups.some(t => t.count > 0) || (showCategoryFilter && roleGroups.length > 0)) {
+      categories.roleGroup = {
+        label: game.i18n.localize('cs-hero-box.form.labels.roleGroup'),
+        icon: 'fa-layer-group',
+        collapsible: true,
+        tags: roleGroups.filter(t => t.count > 0 || showCategoryFilter),
+      };
+    }
+  }
+
+  if (!hideRole) {
+    const groupedRoleEntries = [];
+    if (!hideRoleGroup) {
+      for (const group of tag.getRoleGroups()) {
+        const children = tag.getRoles(group.id)
+          .map(r => ({
+            id: r.id,
+            label: tag.getLabel(r.id),
+            count: tagCounts.get(r.id) ?? 0,
+            isActive: activeTagsSet.has(r.id),
+          }))
+          .filter(c => c.count > 0 || showCategoryFilter)
+          .sort((a, b) => a.label.localeCompare(b.label));
+
+        const groupCount = tagCounts.get(group.id) ?? 0;
+        if (groupCount === 0 && children.length === 0 && !showCategoryFilter) {
+          continue;
+        }
+
+        const isActive = activeTagsSet.has(group.id);
+        const hasActiveChild = children.some(c => c.isActive);
+
+        groupedRoleEntries.push({
+          id: group.id,
+          label: tag.getLabel(group.id),
+          count: groupCount,
+          isActive,
+          isRoleGroup: true,
+          hasChildren: children.length > 0,
+          defaultExpanded: isActive || hasActiveChild,
+          children,
+        });
+      }
+    }
+
+    const rawRoles = hideRoleGroup ? tag.getRoles() : tag.getUngroupedRoles();
+    const ungroupedRoleEntries = rawRoles
+      .map(r => ({
+        id: r.id,
+        label: tag.getLabel(r.id),
+        count: tagCounts.get(r.id) ?? 0,
+        isActive: activeTagsSet.has(r.id),
+        isRoleGroup: false,
+        hasChildren: false,
+        defaultExpanded: false,
+        children: [],
+      }))
+      .filter(t => t.count > 0 || showCategoryFilter);
+
+    const combinedRoleItems = [...groupedRoleEntries, ...ungroupedRoleEntries];
+    if (combinedRoleItems.length > 0) {
       categories.role = {
         label: game.i18n.localize('cs-hero-box.form.labels.role'),
         icon: 'fa-briefcase',
         collapsible: true,
-        tags: roles.filter(t => t.count > 0 || showCategoryFilter),
+        tags: combinedRoleItems,
       };
     }
   }
@@ -172,7 +233,9 @@ export function buildSidebarCategories(options = {}) {
   }
 
   Object.values(categories).forEach(category => {
-    category.tags?.sort((a, b) => a.label.localeCompare(b.label));
+    category.tags?.sort((a, b) =>
+      (b.isRoleGroup ? 1 : 0) - (a.isRoleGroup ? 1 : 0) || a.label.localeCompare(b.label)
+    );
   });
 
   return categories;

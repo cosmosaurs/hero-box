@@ -1,11 +1,11 @@
-/**
+**
  * @fileoverview Tabbed UI for images, names, tags; optional picker mode for selecting indexed art.
  */
 
 import { MODULE_ID, SETTINGS, PATHS, DOCS } from '../../constants/index.mjs';
 import { TAB } from '../../constants/ui.mjs';
 import { getSetting, setSetting } from '../../settings.mjs';
-import { tagIndex, source } from '../../services/index.mjs';
+import { source } from '../../services/index.mjs';
 import { BaseApplication } from '../base/base.mjs';
 
 import { ImagesTab } from './images-tab.mjs';
@@ -15,6 +15,7 @@ import { TagsTab } from './tags-tab.mjs';
 export class DataManager extends BaseApplication {
   static DEFAULT_OPTIONS = {
     id: `${MODULE_ID}-data-manager`,
+    classes: ['cs-hero-box-data-manager-window'],
     window: {
       title: 'cs-hero-box.dataManager.title',
       resizable: false,
@@ -44,9 +45,12 @@ export class DataManager extends BaseApplication {
       confirmSelection: function() { this._onConfirmSelection(); },
       cancelSelection: function() { this._onCancelSelection(); },
       toggleTagGroup: function(event, target) { this._onToggleTagGroup(event, target); },
+      toggleRoleGroupTree: function(event, target) { this._onToggleRoleGroupTree(event, target); },
+      toggleTagTableGroup: function(event, target) { this._onToggleTagTableGroup(event, target); },
       openDataSources: function() { this._onOpenDataSources(); },
       createActorFromSelected: function() { this._onCreateActorFromSelected(); },
       refreshTagsFromNames: function() { this._onRefreshTagsFromNames(); },
+      checkBrokenImages: function() { this._onCheckBrokenImages(); },
     },
   };
 
@@ -73,9 +77,13 @@ export class DataManager extends BaseApplication {
    * @param {{ pickerMode?: boolean, onSelect?: function(object[]): void, initialFilters?: object }} [options]
    */
   constructor(options = {}) {
-    super();
+    const pickerMode = options.pickerMode ?? false;
+    super({
+      id: pickerMode ? `${MODULE_ID}-image-picker` : `${MODULE_ID}-data-manager`,
+      classes: pickerMode ? ['cs-hero-box-data-manager-window', 'picker-mode'] : ['cs-hero-box-data-manager-window'],
+    });
 
-    this.#pickerMode = options.pickerMode ?? false;
+    this.#pickerMode = pickerMode;
     this.#pickerCallback = options.onSelect ?? null;
     this.#initialFilters = options.initialFilters ?? {};
 
@@ -85,7 +93,6 @@ export class DataManager extends BaseApplication {
     }
 
     this.#initializeDefaultJournal();
-    this.#unlockAllCompendiums();
     this.#prefetchModules();
   }
 
@@ -110,7 +117,7 @@ export class DataManager extends BaseApplication {
       resolve(null);
     };
 
-    app.render(true);
+    app.render({ force: true });
     return promise;
   }
 
@@ -121,39 +128,8 @@ export class DataManager extends BaseApplication {
       : game.i18n.localize('cs-hero-box.dataManager.title');
   }
 
-  static get defaultOptions() {
-    return foundry.utils.mergeObject(super.defaultOptions, {
-      classes: ['cs-hero-box-data-manager'],
-    });
-  }
-
-  get element() { return super.element; }
   get selectedJournalId() { return this.#selectedJournalId; }
   get pickerMode() { return this.#pickerMode; }
-
-  render(force, options) {
-    return super.render(force, options);
-  }
-
-  /** @returns {Promise<void>} */
-  async #unlockAllCompendiums() {
-    const sources = source.getEnabledSources();
-
-    for (const sourceId of sources) {
-      if (sourceId.startsWith('Compendium.')) {
-        const packId = sourceId.replace('Compendium.', '');
-        const pack = game.packs.get(packId);
-
-        if (pack?.locked) {
-          try {
-            await pack.configure({ locked: false });
-          } catch (error) {
-            console.warn(`Failed to unlock compendium ${packId}:`, error);
-          }
-        }
-      }
-    }
-  }
 
   /** Binds search, journal select, header button; delegates tab `onRender`. */
   _onRender(context, options) {
@@ -291,11 +267,17 @@ export class DataManager extends BaseApplication {
   /** @returns {Promise<void>} */
   async _onOpenDataSources() {
     const { DataSources } = await import('../data-sources/data-sources.mjs');
+    const existing = foundry.applications.instances.get(`${MODULE_ID}-data-sources`);
+    if (existing) {
+      existing.bringToFront();
+      return;
+    }
     const app = new DataSources();
-    app.render(true);
+    app.render({ force: true });
   }
 
   _onRefreshTagsFromNames() { this.#tabs[TAB.IMAGES].onRefreshTagsFromNames(); }
+  _onCheckBrokenImages() { this.#tabs[TAB.IMAGES].onCheckBrokenImages(); }
 
   _onAddImage() { this.#tabs[TAB.IMAGES].onAddImage(); }
   _onImportFromFolder() { this.#tabs[TAB.IMAGES].onImportFromFolder(); }
@@ -327,6 +309,8 @@ export class DataManager extends BaseApplication {
 
   _onToggleTag(e, t) { this.#tabs[this.#activeTab].onToggleTag(e, t); }
   _onToggleTagGroup(e, t) { this.#tabs[this.#activeTab].onToggleTagGroup(e, t); }
+  _onToggleRoleGroupTree(e, t) { this.#tabs[this.#activeTab].onToggleRoleGroupTree?.(e, t); }
+  _onToggleTagTableGroup(e, t) { this.#tabs[TAB.TAGS].onToggleTagTableGroup(e, t); }
 
   #removeOrphanedPopup() {
     const popup = document.querySelector('.cs-hero-box-card-popup');

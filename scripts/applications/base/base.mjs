@@ -1,4 +1,4 @@
-/**
+**
  * @fileoverview ApplicationV2 base with scroll/focus preservation and debounced events.
  */
 
@@ -23,6 +23,7 @@ export class BaseApplication extends HandlebarsApplicationMixin(ApplicationV2) {
   _preRender(context, options) {
     this.#saveScrollPositions();
     this.#saveFocusState();
+    this.#cleanupListeners();
     return super._preRender(context, options);
   }
 
@@ -35,13 +36,17 @@ export class BaseApplication extends HandlebarsApplicationMixin(ApplicationV2) {
 
   /** Remove debounced/listeners registered via `addEvent` / `addDebouncedEvent`. */
   _onClose(options) {
-    this.#cleanup();
+    this.#cleanupListeners();
+    this.#scrollPositions.clear();
+    this.#focusedElement = null;
+    this.#selectionRange = null;
     return super._onClose(options);
   }
 
   /** Center the application window in the viewport. */
   #centerWindow() {
     requestAnimationFrame(() => {
+      if (!this.element) return;
       const { width, height } = this.element.getBoundingClientRect();
       const left = Math.max(0, (window.innerWidth - width) / 2);
       const top = Math.max(0, (window.innerHeight - height) / 2);
@@ -112,13 +117,12 @@ export class BaseApplication extends HandlebarsApplicationMixin(ApplicationV2) {
     this.#selectionRange = null;
   }
 
-  /** Remove listeners registered via `addEvent`. */
-  #cleanup() {
+  /** Remove listeners and cancel pending debounced handlers registered via `addEvent`. */
+  #cleanupListeners() {
     for (const cleanup of this.#eventCleanup) {
       cleanup();
     }
     this.#eventCleanup = [];
-    this.#scrollPositions.clear();
   }
 
   /** @param {string} selector */
@@ -143,14 +147,20 @@ export class BaseApplication extends HandlebarsApplicationMixin(ApplicationV2) {
   }
 
   /**
-   * Like `addEvent` but debounced by `wait` ms.
+   * Like `addEvent` but debounced by `wait` ms; pending timers are cancelled on re-render or close.
    * @param {EventTarget} element
    * @param {string} event
    * @param {function(Event): void} handler
    * @param {number} [wait]
    */
   addDebouncedEvent(element, event, handler, wait = UI.DEBOUNCE_DELAY) {
-    this.addEvent(element, event, debounce(handler, wait));
+    if (!element) return;
+    const debounced = debounce(handler, wait);
+    element.addEventListener(event, debounced);
+    this.#eventCleanup.push(() => {
+      element.removeEventListener(event, debounced);
+      debounced.cancel();
+    });
   }
 
   /** @param {string} id @param {number} value */

@@ -1,4 +1,4 @@
-<div class="cs-hero-box-data-manager {{#if pickerMode}}picker-mode{{/if}}">
+div class="cs-hero-box-data-manager {{#if pickerMode}}picker-mode{{/if}}">
   {{#unless pickerMode}}
     <nav class="cs-hero-box-data-manager__tabs">
       <button type="button" class="cs-hero-box-data-manager__tab {{#if isImagesTab}}active{{/if}}" data-action="switchTab" data-tab="images">
@@ -28,6 +28,20 @@
           </button>
           <button type="button" data-action="importFromFolder" {{#unless selectedJournalId}}disabled{{/unless}}>
             <i class="fas fa-folder-open"></i> {{localize "cs-hero-box.dataManager.importFolder"}}
+          </button>
+          <button
+            type="button"
+            class="cs-hero-box-data-manager__broken-btn {{#if brokenOnly}}active{{/if}}"
+            data-action="checkBrokenImages"
+            data-tooltip="{{localize 'cs-hero-box.dataManager.checkBrokenTooltip'}}"
+            {{#unless hasIndexedImages}}disabled{{/unless}}
+          >
+            <i class="fas {{#if brokenOnly}}fa-times-circle{{else}}fa-unlink{{/if}}"></i>
+            {{#if brokenOnly}}
+              {{brokenFilterLabel}}
+            {{else}}
+              {{localize "cs-hero-box.dataManager.checkBroken"}}
+            {{/if}}
           </button>
         </div>
       {{else if isNamesTab}}
@@ -75,15 +89,49 @@
                 </div>
                 <div class="cs-hero-box-data-manager__tag-group-content">
                   {{#each tags}}
-                    <button type="button" class="cs-hero-box-data-manager__tag
-                      {{#if isActive}}active{{/if}}" data-action="toggleTag" data-tag="{{id}}"
-                      {{#if isTypeFilter}}data-type-filter="true"{{/if}}
-                      {{#if isCategoryFilter}}data-category-filter="true"{{/if}}
-                      {{#if tooltip}}data-tooltip="{{tooltip}}"{{/if}}
-                    >
-                      <span class="cs-hero-box-data-manager__tag-name">{{label}}</span>
-                      <span class="cs-hero-box-data-manager__tag-count">{{count}}</span>
-                    </button>
+                    {{#if hasChildren}}
+                      <div class="cs-hero-box-data-manager__tag-tree {{#unless defaultExpanded}}collapsed{{/unless}}" data-tree-id="{{id}}">
+                        <div class="cs-hero-box-data-manager__tag-tree-row">
+                          <button type="button" class="cs-hero-box-data-manager__tag
+                            {{#if isActive}}active{{/if}}" data-action="toggleTag" data-tag="{{id}}"
+                            {{#if tooltip}}data-tooltip="{{tooltip}}"{{/if}}
+                          >
+                            <span class="cs-hero-box-data-manager__tag-name">
+                              <i class="fas fa-layer-group cs-hero-box-data-manager__group-icon"></i>
+                              {{label}}
+                            </span>
+                            <span class="cs-hero-box-data-manager__tag-count">{{count}}</span>
+                          </button>
+                          <button type="button" class="cs-hero-box-data-manager__tag-expand" data-action="toggleRoleGroupTree">
+                            <i class="fas fa-chevron-down"></i>
+                          </button>
+                        </div>
+                        <div class="cs-hero-box-data-manager__tag-children">
+                          {{#each children}}
+                            <button type="button" class="cs-hero-box-data-manager__tag cs-hero-box-data-manager__tag--child
+                              {{#if isActive}}active{{/if}}" data-action="toggleTag" data-tag="{{id}}"
+                              {{#if tooltip}}data-tooltip="{{tooltip}}"{{/if}}
+                            >
+                              <span class="cs-hero-box-data-manager__tag-name">{{label}}</span>
+                              <span class="cs-hero-box-data-manager__tag-count">{{count}}</span>
+                            </button>
+                          {{/each}}
+                        </div>
+                      </div>
+                    {{else}}
+                      <button type="button" class="cs-hero-box-data-manager__tag
+                        {{#if isActive}}active{{/if}}" data-action="toggleTag" data-tag="{{id}}"
+                        {{#if isTypeFilter}}data-type-filter="true"{{/if}}
+                        {{#if isCategoryFilter}}data-category-filter="true"{{/if}}
+                        {{#if tooltip}}data-tooltip="{{tooltip}}"{{/if}}
+                      >
+                        <span class="cs-hero-box-data-manager__tag-name">
+                          {{#if isRoleGroup}}<i class="fas fa-layer-group cs-hero-box-data-manager__group-icon"></i>{{/if}}
+                          {{label}}
+                        </span>
+                        <span class="cs-hero-box-data-manager__tag-count">{{count}}</span>
+                      </button>
+                    {{/if}}
                   {{/each}}
                 </div>
               </div>
@@ -118,7 +166,7 @@
             {{#if pickerMode}}
               <button type="button" data-action="selectAll" data-tooltip="{{localize 'cs-hero-box.dataManager.selectAll'}}"><i class="fas fa-check-double"></i></button>
               <div class="cs-hero-box-toolbar-separator"></div>
-              <button type="button" data-action="cancelSelection">{{localize "Cancel"}}</button>
+              <button type="button" data-action="cancelSelection">{{localize "cs-hero-box.common.cancel"}}</button>
               <button type="button" class="primary" data-action="confirmSelection" {{#unless hasSelection}}disabled{{/unless}}>
                 <i class="fas fa-check"></i> {{localize "cs-hero-box.imagePicker.select"}}
               </button>
@@ -182,9 +230,26 @@
           {{#if tags.length}}
             <div class="cs-hero-box-data-manager__tag-table">
               {{#each tags}}
-                <div class="cs-hero-box-data-manager__tag-row {{#if isSubrace}}cs-hero-box-data-manager__tag-row--subrace{{/if}}" data-uuid="{{uuid}}">
-                  <div class="cs-hero-box-data-manager__tag-id"><strong>{{id}}</strong></div>
-                  <div class="cs-hero-box-data-manager__tag-label">{{label}}</div>
+                <div
+                  class="cs-hero-box-data-manager__tag-row {{#if isSubrace}}cs-hero-box-data-manager__tag-row--subrace{{/if}} {{#if isGroupedRole}}cs-hero-box-data-manager__tag-row--subrace{{/if}} {{#if hasChildRoles}}cs-hero-box-data-manager__tag-row--expandable {{#unless isExpanded}}collapsed{{/unless}}{{/if}}"
+                  data-uuid="{{uuid}}"
+                  {{#if isRoleGroup}}data-role-group-row="{{id}}"{{/if}}
+                  {{#if parentRoleGroupId}}data-parent-role-group="{{parentRoleGroupId}}"{{/if}}
+                  {{#if isHiddenByCollapse}}style="display: none"{{/if}}
+                >
+                  <div class="cs-hero-box-data-manager__tag-id">
+                    {{#if hasChildRoles}}
+                      <button type="button" class="cs-hero-box-data-manager__row-expand" data-action="toggleTagTableGroup" data-group-id="{{id}}">
+                        <i class="fas fa-chevron-down"></i>
+                      </button>
+                    {{/if}}
+                    <strong>{{id}}</strong>
+                  </div>
+                  <div class="cs-hero-box-data-manager__tag-label">
+                    {{label}}
+                    {{#if hasChildRoles}}<span class="cs-hero-box-data-manager__child-count">({{childCount}})</span>{{/if}}
+                    {{#if weightBadge}}<span class="cs-hero-box-data-manager__weight-badge" data-tooltip="{{localize 'cs-hero-box.editor.roleWeight'}}">{{weightBadge}}</span>{{/if}}
+                  </div>
                   <div class="cs-hero-box-data-manager__tag-category"><span class="cs-hero-box-data-manager__category-badge">{{categoryLabel}}</span></div>
                   {{#if sourceName}}
                     <div class="cs-hero-box-data-manager__tag-source">{{sourceName}}</div>

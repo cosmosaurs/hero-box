@@ -1,10 +1,10 @@
-/**
+**
  * @fileoverview In-memory index of journal `IMAGE_DATA` entries; optional IndexedDB cache and debounced saves.
  */
 
-import { MODULE_ID, FLAGS, DEFAULT_IMAGE_DATA } from '../constants/index.mjs';
+import { MODULE_ID, FLAGS, DEFAULT_IMAGE_DATA, TAG_CATEGORY } from '../constants/index.mjs';
 import { logger, getFlag } from '../utils/index.mjs';
-import { getSourcePages } from '../utils/source.mjs';
+import { getSourcePages, parseSourceId, SOURCE_TYPE } from '../utils/source.mjs';
 import { derivePortraitUrl } from '../utils/filepicker.mjs';
 import { indexCache } from '../utils/cache.mjs';
 import { source } from './source.mjs';
@@ -19,54 +19,68 @@ class TagIndexService {
   #imageCache = new Map();
   #urlIndex = new Map();
   #initialized = false;
-  #initializing = false;
+  #initPromise = null;
   #cacheDirty = false;
   #saveCacheTimer = null;
 
   /** Hydrate from IndexedDB when fingerprint matches, else scan all sources. */
   async initialize() {
-    if (this.#initialized || this.#initializing) return;
-    this.#initializing = true;
+    if (this.#initialized) return;
+    if (this.#initPromise) return this.#initPromise;
 
-    const timer = logger.time('Tag index initialization');
+    this.#initPromise = (async () => {
+      const timer = logger.time('Tag index initialization');
 
-    try {
-      const sources = source.getDataSources();
+      try {
+        const sources = source.getDataSources();
 
-      if (!sources || sources.length === 0) {
-        logger.debug('No data sources for tag index');
-        this.#initialized = true;
-        return;
-      }
-
-      const loaded = await this.#tryLoadFromCache(sources);
-
-      if (!loaded) {
-        for (const sourceId of sources) {
-          await this.#indexSource(sourceId);
+        if (!sources || sources.length === 0) {
+          logger.debug('No data sources for tag index');
+          this.#initialized = true;
+          return;
         }
-        this.#saveToCache(sources);
-      }
 
-      this.#initialized = true;
-      logger.info(`Indexed ${this.#imageCache.size} images with ${this.#tagToImages.size} unique tags`);
-    } catch (error) {
-      logger.error('Failed to initialize tag index:', error);
-      throw error;
-    } finally {
-      this.#initializing = false;
-      timer.end();
-    }
+        const loaded = await this.#tryLoadFromCache(sources);
+
+        if (!loaded) {
+          for (const sourceId of sources) {
+            await this.#indexSource(sourceId);
+          }
+          await this.#saveToCache(sources);
+        }
+
+        this.#initialized = true;
+        logger.info(`Indexed ${this.#imageCache.size} images with ${this.#tagToImages.size} unique tags`);
+      } catch (error) {
+        logger.error('Failed to initialize tag index:', error);
+        throw error;
+      } finally {
+        this.#initPromise = null;
+        timer.end();
+      }
+    })();
+
+    return this.#initPromise;
   }
 
   /** Clear memory + IndexedDB cache and rebuild from sources. */
   async reindex() {
+    if (this.#initPromise) {
+      try {
+        await this.#initPromise;
+      } catch {
+        // ignore prior init failure before full reindex
+      }
+    }
+    if (this.#saveCacheTimer) {
+      clearTimeout(this.#saveCacheTimer);
+      this.#saveCacheTimer = null;
+    }
     logger.info('Reindexing all sources...');
     this.#tagToImages.clear();
     this.#imageCache.clear();
     this.#urlIndex.clear();
     this.#initialized = false;
-    this.#initializing = false;
     this.#cacheDirty = false;
     await indexCache.delete(CACHE_KEY);
     await indexCache.delete(CACHE_META_KEY);
@@ -141,9 +155,30 @@ class TagIndexService {
     }
   }
 
-  /** @param {string[]} sources */
+  /**
+   * Build non-mutating cache fingerprint including source priority order, locale, module/pack versions, and world journal stamps.
+   * @param {string[]} sources
+   */
   #buildFingerprint(sources) {
-    return sources.sort().join('|') + '|' + game.world.id;
+    const moduleVersion = game.modules.get(MODULE_ID)?.version ?? '0';
+    const lang = game.i18n?.lang ?? 'en';
+    const sourceStamps = sources.map(sourceId => {
+      const parsed = parseSourceId(sourceId);
+      if (parsed.type === SOURCE_TYPE.COMPENDIUM) {
+        const pack = game.packs.get(parsed.packId);
+        const pkgVersion = pack?.metadata?.packageType === 'module'
+          ? (game.modules.get(pack.metadata.packageName)?.version ?? '')
+          : '';
+        const size = pack?.index?.size ?? '';
+        return `${sourceId}@${pkgVersion}:${size}`;
+      }
+      const journal = fromUuidSync(sourceId);
+      const pageCount = journal?.pages?.size ?? 0;
+      const modified = journal?._stats?.modifiedTime ?? 0;
+      return `${sourceId}#${pageCount}:${modified}`;
+    });
+
+    return [game.world.id, lang, moduleVersion, ...sourceStamps].join('|');
   }
 
   /** Debounce persisting index to IndexedDB after mutations. */
@@ -168,9 +203,10 @@ class TagIndexService {
    */
   updateImage(uuid, newImageData) {
     if (!this.#initialized) return;
+    const prevSourceId = this.#imageCache.get(uuid)?.sourceId ?? null;
     this.#removeImageInternal(uuid);
     if (newImageData) {
-      this.#addImageToIndex(uuid, newImageData);
+      this.#addImageToIndex(uuid, newImageData, newImageData.sourceId ?? prevSourceId);
     }
     this.#markCacheDirty();
   }
@@ -181,9 +217,10 @@ class TagIndexService {
   updateImages(updates) {
     if (!this.#initialized) return;
     for (const { uuid, imageData } of updates) {
+      const prevSourceId = this.#imageCache.get(uuid)?.sourceId ?? null;
       this.#removeImageInternal(uuid);
       if (imageData) {
-        this.#addImageToIndex(uuid, imageData);
+        this.#addImageToIndex(uuid, imageData, imageData.sourceId ?? prevSourceId);
       }
     }
     this.#markCacheDirty();
@@ -268,8 +305,12 @@ class TagIndexService {
       }
     }
 
-    if (existing.tokenUrl) this.#urlIndex.delete(existing.tokenUrl);
-    if (existing.portraitUrl && existing.portraitUrl !== existing.tokenUrl) this.#urlIndex.delete(existing.portraitUrl);
+    if (existing.tokenUrl && this.#urlIndex.get(existing.tokenUrl)?.uuid === uuid) {
+      this.#urlIndex.delete(existing.tokenUrl);
+    }
+    if (existing.portraitUrl && existing.portraitUrl !== existing.tokenUrl && this.#urlIndex.get(existing.portraitUrl)?.uuid === uuid) {
+      this.#urlIndex.delete(existing.portraitUrl);
+    }
 
     this.#imageCache.delete(uuid);
   }
@@ -353,6 +394,26 @@ class TagIndexService {
   }
 
   /**
+   * Resolve image uuids for a tag, expanding `roleGroup` tags to include their child roles.
+   * @param {string} tagId
+   * @returns {Set<string>|null}
+   */
+  #getUuidsForTag(tagId) {
+    const tagData = tag.get(tagId);
+    if (tagData?.category === TAG_CATEGORY.ROLE_GROUP) {
+      const union = new Set(this.#tagToImages.get(tagId) ?? []);
+      for (const childRole of tag.getRoles(tagId)) {
+        const childUuids = this.#tagToImages.get(childRole.id);
+        if (childUuids) {
+          for (const uuid of childUuids) union.add(uuid);
+        }
+      }
+      return union;
+    }
+    return this.#tagToImages.get(tagId) ?? null;
+  }
+
+  /**
    * AND semantics: image must include every listed tag.
    * @param {string[]} requiredTags Empty = all images.
    * @returns {object[]}
@@ -368,7 +429,7 @@ class TagIndexService {
     let resultUuids = null;
 
     for (const tagId of requiredTags) {
-      const imagesWithTag = this.#tagToImages.get(tagId);
+      const imagesWithTag = this.#getUuidsForTag(tagId);
       if (!imagesWithTag?.size) return [];
 
       resultUuids = resultUuids
@@ -400,7 +461,7 @@ class TagIndexService {
     for (const [_, tags] of activeGroups) {
       const categoryUuids = new Set();
       for (const tagId of tags) {
-        const imagesWithTag = this.#tagToImages.get(tagId);
+        const imagesWithTag = this.#getUuidsForTag(tagId);
         if (imagesWithTag) {
           for (const uuid of imagesWithTag) categoryUuids.add(uuid);
         }
@@ -436,6 +497,10 @@ class TagIndexService {
     const tagCounts = new Map();
     for (const [tagId, uuids] of this.#tagToImages) {
       tagCounts.set(tagId, uuids.size);
+    }
+    for (const group of tag.getRoleGroups()) {
+      const uuids = this.#getUuidsForTag(group.id);
+      if (uuids?.size) tagCounts.set(group.id, uuids.size);
     }
     return {
       totalImages: this.#imageCache.size,

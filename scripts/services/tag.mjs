@@ -1,4 +1,4 @@
-/**
+**
  * @fileoverview Tag registry: built-ins plus race/subrace/role loaded from `TAG_DATA` journal flags.
  */
 
@@ -59,7 +59,7 @@ class TagService {
 
   /**
    * @param {string} id
-   * @param {string|null} [parentRaceId] When resolving a subrace by id under a race.
+   * @param {string|null} [parentRaceId] When resolving a subrace by id under a parent race.
    */
   get(id, parentRaceId = null) {
     if (parentRaceId) {
@@ -111,8 +111,32 @@ class TagService {
   }
 
   /** @returns {object[]} */
-  getRoles() {
-    return this.getByCategory(TAG_CATEGORY.ROLE);
+  getRoleGroups() {
+    return this.getByCategory(TAG_CATEGORY.ROLE_GROUP);
+  }
+
+  /**
+   * @param {string|null} [roleGroupId] If set, roles assigned to that role group only.
+   * @returns {object[]}
+   */
+  getRoles(roleGroupId = null) {
+    const allRoles = this.getByCategory(TAG_CATEGORY.ROLE);
+    if (roleGroupId) {
+      return allRoles.filter(r => r.roleGroupId === roleGroupId);
+    }
+    return allRoles;
+  }
+
+  /**
+   * Roles that do not belong to an existing `roleGroup` tag.
+   * @returns {object[]}
+   */
+  getUngroupedRoles() {
+    return this.getByCategory(TAG_CATEGORY.ROLE).filter(r => {
+      if (!r.roleGroupId) return true;
+      const group = this.#tags.get(r.roleGroupId);
+      return !group || group.category !== TAG_CATEGORY.ROLE_GROUP;
+    });
   }
 
   /** @returns {object[]} */
@@ -156,6 +180,24 @@ class TagService {
   /** @param {string} raceId */
   hasSubraces(raceId) {
     return (this.#subracesByParent.get(raceId)?.length ?? 0) > 0;
+  }
+
+  /** @param {string} roleGroupId */
+  hasGroupedRoles(roleGroupId) {
+    return this.getRoles(roleGroupId).length > 0;
+  }
+
+  /**
+   * @param {string} roleId
+   * @returns {number} Positive spawn weight (default `1`).
+   */
+  getRoleWeight(roleId) {
+    const w = Number(this.#tags.get(roleId)?.weight);
+    return Number.isFinite(w) && w > 0 ? w : 1;
+  }
+
+  get isInitialized() {
+    return this.#initialized;
   }
 
   /**
@@ -207,7 +249,7 @@ class TagService {
       const parsed = parseSourceId(sourceId);
 
       if (parsed.type === SOURCE_TYPE.COMPENDIUM && parsed.packId) {
-        resolved = game.packs.get(parsed.packId).metadata.packageName;
+        resolved = game.packs.get(parsed.packId)?.metadata?.packageName ?? null;
       }
     } catch {
       resolved = null;
@@ -259,11 +301,14 @@ class TagService {
           const tagData = getFlag(page, FLAGS.TAG_DATA);
           if (!tagData?.id) continue;
 
+          const rawWeight = Number(tagData.weight);
           const entry = {
             uuid: page.uuid,
             id: tagData.id,
             category: tagData.category,
             parentRaceId: tagData.parentRaceId ?? null,
+            roleGroupId: tagData.roleGroupId ?? null,
+            weight: Number.isFinite(rawWeight) && rawWeight > 0 ? rawWeight : 1,
             label: tagData.label ?? tagData.labels?.en ?? tagData.id,
             sourceId,
           };

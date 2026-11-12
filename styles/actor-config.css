@@ -1,4 +1,4 @@
-.cs-hero-box-form {
+cs-hero-box-form {
   display: flex;
   flex-direction: column;
   height: 100%;
@@ -244,6 +244,7 @@
 }
 
 .cs-hero-box-form__race-item {
+  break-inside: avoid;
   margin-block-end: var(--cs-hero-box-spacing-xs);
   display: flex;
   flex-direction: column;
@@ -337,16 +338,6 @@
   display: flex;
   align-items: center;
   justify-content: center;
-}
-
-.cs-hero-box-form__age-btn:hover {
-  background: var(--cs-hero-box-bg-hover);
-  color: var(--cs-hero-box-text-secondary);
-}
-
-.cs-hero-box-form__age-btn.active {
-  background: rgba(255, 128, 0, 0.15);
-  color: var(--cs-hero-box-text-primary);
 }
 
 .cs-hero-box-form__age-btn:hover {
@@ -708,6 +699,59 @@
   width: 100%;
 }
 
+.cs-hero-box-form__group-header-row {
+  display: flex;
+  align-items: stretch;
+  gap: 4px;
+  width: 100%;
+}
+
+.cs-hero-box-form__group-header-row > .cs-hero-box-form__tri-chip--race {
+  flex: 1;
+  width: auto;
+  min-width: 0;
+}
+
+.cs-hero-box-form__tri-chip--role-group {
+  gap: 6px;
+}
+
+.cs-hero-box-form__group-chip-icon {
+  font-size: 0.75em;
+  opacity: 0.8;
+  flex-shrink: 0;
+}
+
+.cs-hero-box-form__group-expand-btn {
+  width: 26px;
+  padding: 0;
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--cs-hero-box-radius-sm);
+  background: var(--cs-hero-box-bg-secondary);
+  border: 1px solid transparent;
+  color: var(--cs-hero-box-text-muted);
+  cursor: pointer;
+  font-size: var(--cs-hero-box-font-size-xs);
+  transition: background var(--cs-hero-box-transition-fast), color var(--cs-hero-box-transition-fast);
+}
+
+.cs-hero-box-form__group-expand-btn:hover {
+  background: var(--cs-hero-box-bg-hover);
+  color: var(--cs-hero-box-text-primary);
+}
+
+.cs-hero-box-form__group-expand-btn i {
+  transform: rotate(-90deg);
+  transition: transform var(--cs-hero-box-transition-fast);
+}
+
+.cs-hero-box-form__group-expand-btn.expanded i {
+  transform: rotate(0deg);
+}
+
 .cs-hero-box-form__tri-chip--subrace {
   font-size: var(--cs-hero-box-font-size-sm);
   padding: 2px var(--cs-hero-box-spacing-xs);
@@ -727,23 +771,6 @@
 
 .cs-hero-box-form__tri-chip--age[data-state="none"]:hover {
   background: var(--cs-hero-box-bg-hover);
-}
-
-.cs-hero-box-form__tri-chip:hover {
-  background: var(--cs-hero-box-bg-hover);
-  color: var(--cs-hero-box-text-primary);
-}
-
-.cs-hero-box-form__tri-chip[data-state="include"] {
-  background: rgba(34, 197, 94, 0.15);
-  border-color: rgba(34, 197, 94, 0.4);
-  color: #4ade80;
-}
-
-.cs-hero-box-form__tri-chip[data-state="exclude"] {
-  background: rgba(239, 68, 68, 0.15);
-  border-color: rgba(239, 68, 68, 0.4);
-  color: #f87171;
 }
 
 .cs-hero-box-form__clear-random-btn {

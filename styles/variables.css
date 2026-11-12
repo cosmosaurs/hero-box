@@ -1,4 +1,4 @@
-/* design tokens — spacing, sizes, colors, the whole shebang */
+* design tokens — spacing, sizes, colors, the whole shebang */
 
 :root {
   /* spacing scale */
@@ -50,7 +50,9 @@
   --cs-hero-box-scrollbar-thumb-hover: #5a554f;
 }
 
-/* light theme overrides */
+/* light theme overrides (Foundry v13/v14 .theme-light and data-theme) */
+body.theme-light,
+.theme-light,
 [data-theme="light"] {
   --cs-hero-box-bg-primary: #f5f3f0;
   --cs-hero-box-bg-secondary: #eae7e3;

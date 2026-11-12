@@ -1,4 +1,4 @@
-/**
+**
  * @fileoverview Data Manager "Tags" tab: list/filter custom tags and open editor.
  */
 
@@ -7,14 +7,14 @@ import { logger } from '../../utils/index.mjs';
 import { buildSidebarCategories, handleTagToggle } from '../../utils/sidebar.mjs';
 import { tag, source } from '../../services/index.mjs';
 import { sortByLabel } from '../../utils/sort.mjs';
-import { getSetting, setSetting } from '../../settings.mjs';
-import { SETTINGS } from '../../constants/settings.mjs';
+import { CollapsedGroupsManager } from '../../utils/collapsed-groups.mjs';
 
 /** Tab logic for tag definitions; `app` is the parent DataManager. */
 export class TagsTab {
   #app = null;
   #filters = { tags: [], search: '', categories: [] };
-  #collapsedGroups = new Set();
+  #collapsedManager = null;
+  #expandedGroupIds = new Set();
   #allTagsCache = null;
   #tagCountsCache = null;
   #filteredCache = null;
@@ -23,6 +23,7 @@ export class TagsTab {
   /** @param {import('./data-manager.mjs').DataManager} app */
   constructor(app) {
     this.#app = app;
+    this.#collapsedManager = new CollapsedGroupsManager(app, 'tags');
   }
 
   /** @returns {string} */
@@ -39,6 +40,7 @@ export class TagsTab {
   /** Clears filters and internal caches. */
   reset() {
     this.#filters = { tags: [], search: '', categories: [] };
+    this.#expandedGroupIds.clear();
     this.#allTagsCache = null;
     this.#tagCountsCache = null;
     this.#filteredCache = null;
@@ -68,6 +70,7 @@ export class TagsTab {
       hideGender: true,
       hideAge: true,
       hideSubrace: true,
+      hideRoleGroup: false,
       hideRole: true,
       hideOther: true,
     });
@@ -116,16 +119,18 @@ export class TagsTab {
     }
 
     if (this.#filters.tags.length > 0) {
-      const filterRaces = new Set(this.#filters.tags.filter(t => {
-        const tagData = tag.get(t);
-        return tagData?.category === TAG_CATEGORY.RACE;
-      }));
+      const filterRaces = new Set(this.#filters.tags.filter(t => tag.get(t)?.category === TAG_CATEGORY.RACE));
+      const filterRoleGroups = new Set(this.#filters.tags.filter(t => tag.get(t)?.category === TAG_CATEGORY.ROLE_GROUP));
 
-      if (filterRaces.size > 0) {
+      if (filterRaces.size > 0 || filterRoleGroups.size > 0) {
         result = result.filter(t => {
-          if (t.category === TAG_CATEGORY.RACE) return filterRaces.has(t.id);
-          if (t.category === TAG_CATEGORY.SUBRACE) return filterRaces.has(t.parentRaceId);
-          return true;
+          if (filterRaces.size > 0 && (t.category === TAG_CATEGORY.RACE ? filterRaces.has(t.id) : t.category === TAG_CATEGORY.SUBRACE && filterRaces.has(t.parentRaceId))) {
+            return true;
+          }
+          if (filterRoleGroups.size > 0 && (t.category === TAG_CATEGORY.ROLE_GROUP ? filterRoleGroups.has(t.id) : t.category === TAG_CATEGORY.ROLE && filterRoleGroups.has(t.roleGroupId))) {
+            return true;
+          }
+          return false;
         });
       }
     }
@@ -145,7 +150,7 @@ export class TagsTab {
 
   /** Restores collapsed sidebar groups after template render. */
   onRender() {
-    this.#restoreCollapsedGroups();
+    this.#collapsedManager.restore();
   }
 
   /** @returns {Promise<void>} */
@@ -188,9 +193,10 @@ export class TagsTab {
       const page = await fromUuid(uuid);
       if (!page) return;
 
+      const safeName = foundry.utils.escapeHTML(page.name ?? '');
       const confirmed = await foundry.applications.api.DialogV2.confirm({
         window: { title: game.i18n.localize('cs-hero-box.dataManager.deleteConfirm.title') },
-        content: `<p>${game.i18n.format('cs-hero-box.dataManager.deleteConfirm.content', { name: page.name })}</p>`,
+        content: `<p>${game.i18n.format('cs-hero-box.dataManager.deleteConfirm.content', { name: safeName })}</p>`,
         yes: { default: true },
         no: { default: false },
       });
@@ -218,35 +224,39 @@ export class TagsTab {
 
   /** Collapse/expand a category group in the sidebar. */
   onToggleTagGroup(event, target) {
-    const group = target.closest('.cs-hero-box-data-manager__tag-group');
-    if (group) {
-      const category = group.dataset.category;
-      group.classList.toggle('collapsed');
-      if (group.classList.contains('collapsed')) {
-        this.#collapsedGroups.add(category);
-      } else {
-        this.#collapsedGroups.delete(category);
-      }
-      this.#saveCollapsedState();
-    }
+    this.#collapsedManager.toggle(target);
   }
 
-  /** Reapply `.collapsed` without transition flash after render. */
-  #restoreCollapsedGroups() {
-    try {
-      const saved = getSetting(SETTINGS.COLLAPSED_DATA_MANAGER);
-      const tabCollapsed = saved?.tags ?? [];
-      this.#collapsedGroups = new Set(tabCollapsed);
-    } catch {}
+  /** Collapse/expand a role-group subtree in the sidebar. */
+  onToggleRoleGroupTree(event, target) {
+    this.#collapsedManager.toggleSubTree(target);
+  }
 
-    for (const category of this.#collapsedGroups) {
-      const group = this.#app.querySelector(`.cs-hero-box-data-manager__tag-group[data-category="${category}"]`);
-      if (group) {
-        group.classList.add('no-transition', 'collapsed');
-        requestAnimationFrame(() => {
-          requestAnimationFrame(() => group.classList.remove('no-transition'));
-        });
-      }
+  /** Expand/collapse child role rows under a roleGroup row in the tags table. */
+  onToggleTagTableGroup(event, target) {
+    const groupId = target.dataset.groupId;
+    if (!groupId) return;
+
+    const safeId = typeof CSS !== 'undefined' && typeof CSS.escape === 'function' ? CSS.escape(groupId) : groupId;
+    const groupRow = this.#app.querySelector(`.cs-hero-box-data-manager__tag-row[data-role-group-row="${safeId}"]`);
+    const isCurrentlyCollapsed = groupRow
+      ? groupRow.classList.contains('collapsed')
+      : !this.#expandedGroupIds.has(groupId);
+    const shouldExpand = isCurrentlyCollapsed;
+
+    if (shouldExpand) {
+      this.#expandedGroupIds.add(groupId);
+    } else {
+      this.#expandedGroupIds.delete(groupId);
+    }
+
+    if (groupRow) {
+      groupRow.classList.toggle('collapsed', !shouldExpand);
+    }
+
+    const childRows = this.#app.querySelectorAll(`.cs-hero-box-data-manager__tag-row[data-parent-role-group="${safeId}"]`);
+    for (const row of childRows) {
+      row.style.display = shouldExpand ? '' : 'none';
     }
   }
 
@@ -254,11 +264,32 @@ export class TagsTab {
   #groupTagsForDisplay(filteredTags) {
     const raceTags = filteredTags.filter(t => t.category === TAG_CATEGORY.RACE);
     const subraceTags = filteredTags.filter(t => t.category === TAG_CATEGORY.SUBRACE);
+    const roleTags = filteredTags.filter(t => t.category === TAG_CATEGORY.ROLE);
     const otherTags = filteredTags.filter(t =>
-      t.category !== TAG_CATEGORY.RACE && t.category !== TAG_CATEGORY.SUBRACE
+      t.category !== TAG_CATEGORY.RACE
+      && t.category !== TAG_CATEGORY.SUBRACE
+      && t.category !== TAG_CATEGORY.ROLE_GROUP
+      && t.category !== TAG_CATEGORY.ROLE
     );
 
+    const roleGroupMap = new Map();
+    for (const g of filteredTags) {
+      if (g.category === TAG_CATEGORY.ROLE_GROUP) {
+        roleGroupMap.set(g.id, g);
+      }
+    }
+    for (const r of roleTags) {
+      if (r.roleGroupId && !roleGroupMap.has(r.roleGroupId)) {
+        const parentGroup = tag.get(r.roleGroupId);
+        if (parentGroup?.category === TAG_CATEGORY.ROLE_GROUP) {
+          roleGroupMap.set(parentGroup.id, parentGroup);
+        }
+      }
+    }
+    const roleGroupTags = Array.from(roleGroupMap.values());
+
     const sortedRaces = sortByLabel(raceTags);
+    const sortedRoleGroups = sortByLabel(roleGroupTags.map(g => ({ ...g, label: tag.getLabel(g.id) })));
     const sortedOther = sortByLabel(otherTags);
 
     const groupedTags = [];
@@ -299,6 +330,57 @@ export class TagsTab {
       });
     }
 
+    for (const group of sortedRoleGroups) {
+      const groupedRoles = roleTags
+        .filter(r => r.roleGroupId === group.id)
+        .map(r => ({ ...r, label: tag.getLabel(r.id) }));
+
+      const forceExpand = Boolean(this.#filters.search)
+        || this.#filters.tags.includes(group.id)
+        || this.#filters.categories.includes(TAG_CATEGORY.ROLE);
+      const isExpanded = forceExpand || this.#expandedGroupIds.has(group.id);
+
+      groupedTags.push({
+        ...group,
+        label: tag.getLabel(group.id),
+        categoryLabel: game.i18n.localize(`cs-hero-box.tagCategory.${group.category}`),
+        sourceName: source.getSourceName(group.sourceId),
+        isRoleGroup: true,
+        hasChildRoles: groupedRoles.length > 0,
+        childCount: groupedRoles.length,
+        isExpanded,
+      });
+
+      for (const role of sortByLabel(groupedRoles)) {
+        const w = tag.getRoleWeight(role.id);
+        groupedTags.push({
+          ...role,
+          categoryLabel: game.i18n.localize(`cs-hero-box.tagCategory.${role.category}`),
+          sourceName: source.getSourceName(role.sourceId),
+          isGroupedRole: true,
+          parentRoleGroupId: group.id,
+          isHiddenByCollapse: !isExpanded,
+          weightBadge: w !== 1 ? `×${w}` : null,
+        });
+      }
+    }
+
+    const ungroupedRoles = roleTags
+      .filter(r => !roleGroupMap.has(r.roleGroupId))
+      .map(r => ({ ...r, label: tag.getLabel(r.id) }));
+
+    for (const role of sortByLabel(ungroupedRoles)) {
+      const w = tag.getRoleWeight(role.id);
+      groupedTags.push({
+        ...role,
+        categoryLabel: game.i18n.localize(`cs-hero-box.tagCategory.${role.category}`),
+        sourceName: source.getSourceName(role.sourceId),
+        isRole: true,
+        isGroupedRole: false,
+        weightBadge: w !== 1 ? `×${w}` : null,
+      });
+    }
+
     for (const t of sortedOther) {
       groupedTags.push({
         ...t,
@@ -309,13 +391,5 @@ export class TagsTab {
     }
 
     return groupedTags;
-  }
-
-  #saveCollapsedState() {
-    try {
-      const saved = getSetting(SETTINGS.COLLAPSED_DATA_MANAGER) ?? {};
-      saved.tags = Array.from(this.#collapsedGroups);
-      setSetting(SETTINGS.COLLAPSED_DATA_MANAGER, saved);
-    } catch {}
   }
 }

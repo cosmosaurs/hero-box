@@ -1,10 +1,11 @@
-/**
+**
  * @fileoverview Configure enabled journal/compendium sources and trigger reindex + name reload.
  */
 
 import { MODULE_ID, FLAGS, PATHS, DOCS } from '../../constants/index.mjs';
+import { logger } from '../../utils/index.mjs';
 import { journalHasModuleData } from '../../utils/source.mjs';
-import { tagIndex, tag, source, nameGenerator } from '../../services/index.mjs';
+import { source, reloadDataServices } from '../../services/index.mjs';
 import { BaseFormApplication } from '../base/base.mjs';
 
 export class DataSources extends BaseFormApplication {
@@ -59,7 +60,7 @@ export class DataSources extends BaseFormApplication {
       dataSources: allSources.map((s, index) => source.enrichSourceData(s, index, total)),
       contentPacksHintHtml: game.i18n.format('cs-hero-box.docs.contentPacksHint', { url: DOCS.CONTENT_PACKS_WIKI }),
       buttons: [
-        { type: 'submit', icon: 'fa-solid fa-save', label: 'Save' },
+        { type: 'submit', icon: 'fa-solid fa-save', label: 'cs-hero-box.common.save' },
       ],
     };
   }
@@ -75,19 +76,21 @@ export class DataSources extends BaseFormApplication {
     const needsReload = this.#pendingReload;
     this.#pendingReload = false;
 
-    this.close();
+    await this.close();
 
     if (needsReload) {
-      setTimeout(async () => {
-        await tag.reload();
-        await tagIndex.reindex();
-        await nameGenerator.reload();
-
-        this.#refreshDataManager();
-      }, 50);
+      await reloadDataServices();
     }
 
     return false;
+  }
+
+  _onClose(options) {
+    if (this.#pendingReload) {
+      this.#pendingReload = false;
+      reloadDataServices();
+    }
+    return super._onClose(options);
   }
 
   /** @returns {Promise<void>} */
@@ -192,7 +195,7 @@ export class DataSources extends BaseFormApplication {
           found++;
         }
       } catch (error) {
-        console.warn(`Failed to scan compendium ${pack.collection}:`, error);
+        logger.warn(`Failed to scan compendium ${pack.collection}:`, error);
       }
     }
 
@@ -218,29 +221,6 @@ export class DataSources extends BaseFormApplication {
       return false;
     }
     return false;
-  }
-
-  /** Re-render open Data Manager and invalidate tab caches. */
-  #refreshDataManager() {
-    const targetId = `${MODULE_ID}-data-manager`;
-    let openApp = null;
-
-    if (foundry.applications?.instances) {
-      for (const app of foundry.applications.instances.values()) {
-        if (app.id === targetId) {
-          openApp = app;
-          break;
-        }
-      }
-    }
-
-    if (!openApp) {
-      openApp = Object.values(ui.windows).find(w => w.id === targetId) ?? null;
-    }
-
-    if (openApp && typeof openApp.refreshAllTabs === 'function') {
-      openApp.refreshAllTabs();
-    }
   }
 
   /** @returns {{ id: string, name: string, packageType: string, packageName: string }[]} */
@@ -294,13 +274,15 @@ export class DataSources extends BaseFormApplication {
       return null;
     }
 
+    const esc = foundry.utils.escapeHTML;
+
     const compendiumOptions = compendiums.map(c => {
-      const prefix = c.packageType === 'module' ? `[Module: ${c.packageName}]` : '[World]';
-      return `<option value="${c.id}">${prefix} ${c.name}</option>`;
+      const prefix = c.packageType === 'module' ? `[Module: ${esc(c.packageName)}]` : '[World]';
+      return `<option value="${esc(c.id)}">${prefix} ${esc(c.name)}</option>`;
     });
 
     const journalOptions = journals.map(j =>
-      `<option value="${j.id}">[World Journal] ${j.name}</option>`
+      `<option value="${esc(j.id)}">[World Journal] ${esc(j.name)}</option>`
     );
 
     const options = [...compendiumOptions, ...journalOptions].join('');

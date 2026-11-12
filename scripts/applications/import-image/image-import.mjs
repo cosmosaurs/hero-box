@@ -1,10 +1,11 @@
-/**
+**
  * @fileoverview Bulk or single image import into a target journal with tag inference.
  */
 
 import { MODULE_ID, FLAGS, DEFAULT_IMAGE_DATA, PATHS } from '../../constants/index.mjs';
 import { logger } from '../../utils/index.mjs';
-import { browseImage, browseFolder, scanFolderForImages, getFileNameFromPath, parseTagsFromFileName } from '../../utils/filepicker.mjs';
+import { browseImage, browseFolder, scanFolderForImages, getFileNameFromPath, stripFileExtension, parseTagsFromFileName, parseTagsFromPath, getRelativeBasePath } from '../../utils/filepicker.mjs';
+import { expandParentTags } from '../../utils/tags.mjs';
 import { getJournalForWrite } from '../../utils/source.mjs';
 import { tagIndex, tag } from '../../services/index.mjs';
 import { BaseFormApplication } from '../base/base.mjs';
@@ -57,7 +58,12 @@ export class ImageImport extends BaseFormApplication {
   #tokenUrl = '';
   #portraitUrl = '';
   #tokenFolder = '';
+  #tokenFolderSource = 'data';
+  #tokenFolderOptions = {};
   #portraitFolder = '';
+  #portraitFolderSource = 'data';
+  #portraitFolderOptions = {};
+  #recursive = true;
   #scale = DEFAULT_IMAGE_DATA.scale;
   #dynamicRing = DEFAULT_IMAGE_DATA.dynamicRing;
 
@@ -90,7 +96,7 @@ export class ImageImport extends BaseFormApplication {
       resolve(false);
     };
 
-    app.render(true);
+    app.render({ force: true });
     return promise;
   }
 
@@ -117,6 +123,7 @@ export class ImageImport extends BaseFormApplication {
       portraitUrl: this.#portraitUrl,
       tokenFolder: this.#tokenFolder,
       portraitFolder: this.#portraitFolder,
+      recursive: this.#recursive,
       scale: this.#scale,
       dynamicRing: this.#dynamicRing,
       buttons: [
@@ -134,61 +141,95 @@ export class ImageImport extends BaseFormApplication {
     this.#scale = parseFloat(formData.object.scale) || DEFAULT_IMAGE_DATA.scale;
     this.#dynamicRing = formData.object.dynamicRing ?? DEFAULT_IMAGE_DATA.dynamicRing;
 
+    let completed = false;
     try {
       if (this.#mode === MODE.SINGLE) {
-        await this.#doSingleImport(formData.object);
+        completed = await this.#doSingleImport(formData.object);
       } else {
-        await this.#doFolderImport(formData.object);
+        completed = await this.#doFolderImport(formData.object);
       }
     } catch (error) {
       logger.error('Import failed:', error);
+      ui.notifications.error(game.i18n.localize('cs-hero-box.imageImport.error'));
       return false;
     }
+
+    if (!completed) return false;
 
     if (this.#onSave) this.#onSave();
     this.close();
     return false;
   }
 
-  /** @param {object} formData @returns {Promise<void>} */
+  /** @param {object} formData @returns {Promise<boolean>} */
   async #doSingleImport(formData) {
     const tokenUrl = formData.tokenUrl?.trim() || '';
     const portraitUrl = formData.portraitUrl?.trim() || '';
 
     if (!tokenUrl && !portraitUrl) {
-      throw new Error('No URL provided');
+      ui.notifications.warn(game.i18n.localize('cs-hero-box.imageImport.errorNoUrl'));
+      return false;
     }
 
     const knownTagIds = this.#getAllKnownTagIds();
     const fileName = getFileNameFromPath(portraitUrl || tokenUrl);
+    const rawTags = [
+      ...(tokenUrl ? parseTagsFromPath(tokenUrl, knownTagIds) : []),
+      ...(portraitUrl ? parseTagsFromPath(portraitUrl, knownTagIds) : []),
+      ...parseTagsFromFileName(fileName, knownTagIds),
+    ];
 
-    await this.#importImages([{
+    const { created, updated } = await this.#importImages([{
       fileName,
       tokenUrl,
       portraitUrl,
-      tags: parseTagsFromFileName(fileName, knownTagIds),
+      tags: expandParentTags([...new Set(rawTags)], tag),
     }], this.#journalId);
+
+    this.#notifyImportResult(created, updated);
+    return created > 0 || updated > 0;
   }
 
-  /** @param {object} formData @returns {Promise<void>} */
+  /** @param {object} formData @returns {Promise<boolean>} */
   async #doFolderImport(formData) {
     const tokenFolder = formData.tokenFolder?.trim() || '';
     const portraitFolder = formData.portraitFolder?.trim() || '';
 
     if (!tokenFolder && !portraitFolder) {
-      throw new Error('No folder provided');
+      ui.notifications.warn(game.i18n.localize('cs-hero-box.imageImport.errorNoFolder'));
+      return false;
     }
 
-    const tokenFiles = tokenFolder ? await scanFolderForImages(tokenFolder) : [];
-    const portraitFiles = portraitFolder ? await scanFolderForImages(portraitFolder) : [];
+    const recursive = Boolean(formData.recursive ?? this.#recursive);
+    this.#recursive = recursive;
+
+    const tokenFiles = tokenFolder
+      ? await scanFolderForImages(tokenFolder, this.#tokenFolderSource, this.#tokenFolderOptions, { recursive })
+      : [];
+    const portraitFiles = portraitFolder
+      ? await scanFolderForImages(portraitFolder, this.#portraitFolderSource, this.#portraitFolderOptions, { recursive })
+      : [];
 
     if (!tokenFiles.length && !portraitFiles.length) {
-      return;
+      ui.notifications.warn(game.i18n.localize('cs-hero-box.imageImport.noImages'));
+      return false;
     }
 
     const knownTagIds = this.#getAllKnownTagIds();
-    const fileMap = this.#buildFileMap(tokenFiles, portraitFiles, knownTagIds);
-    await this.#importImages(fileMap, this.#journalId);
+    const fileMap = this.#buildFileMap(tokenFiles, portraitFiles, knownTagIds, tokenFolder, portraitFolder);
+    const { created, updated } = await this.#importImages(fileMap, this.#journalId);
+
+    this.#notifyImportResult(created, updated);
+    return created > 0 || updated > 0;
+  }
+
+  #notifyImportResult(created, updated) {
+    if (created > 0) {
+      ui.notifications.info(game.i18n.format('cs-hero-box.imageImport.success', { count: created }));
+    }
+    if (updated > 0) {
+      ui.notifications.info(game.i18n.format('cs-hero-box.imageImport.updated', { count: updated }));
+    }
   }
 
   /** Toggle single vs folder import UI. */
@@ -218,16 +259,20 @@ export class ImageImport extends BaseFormApplication {
 
   /** Opens folder picker for token images directory. */
   _onBrowseTokenFolder() {
-    browseFolder(this.#tokenFolder, (path) => {
+    browseFolder(this.#tokenFolder, (path, picker) => {
       this.#tokenFolder = path;
+      this.#tokenFolderSource = picker?.activeSource || 'data';
+      this.#tokenFolderOptions = picker?.source?.bucket ? { bucket: picker.source.bucket } : {};
       this.render();
     });
   }
 
   /** Opens folder picker for portrait images directory. */
   _onBrowsePortraitFolder() {
-    browseFolder(this.#portraitFolder, (path) => {
+    browseFolder(this.#portraitFolder, (path, picker) => {
       this.#portraitFolder = path;
+      this.#portraitFolderSource = picker?.activeSource || 'data';
+      this.#portraitFolderOptions = picker?.source?.bucket ? { bucket: picker.source.bucket } : {};
       this.render();
     });
   }
@@ -237,8 +282,16 @@ export class ImageImport extends BaseFormApplication {
     const inputs = {
       'input[name="tokenUrl"]': (v) => this.#tokenUrl = v,
       'input[name="portraitUrl"]': (v) => this.#portraitUrl = v,
-      'input[name="tokenFolder"]': (v) => this.#tokenFolder = v,
-      'input[name="portraitFolder"]': (v) => this.#portraitFolder = v,
+      'input[name="tokenFolder"]': (v) => {
+        this.#tokenFolder = v;
+        this.#tokenFolderSource = 'data';
+        this.#tokenFolderOptions = {};
+      },
+      'input[name="portraitFolder"]': (v) => {
+        this.#portraitFolder = v;
+        this.#portraitFolderSource = 'data';
+        this.#portraitFolderOptions = {};
+      },
       'input[name="scale"]': (v) => this.#scale = parseFloat(v) || DEFAULT_IMAGE_DATA.scale,
     };
 
@@ -260,6 +313,13 @@ export class ImageImport extends BaseFormApplication {
         this.#dynamicRing = e.target.checked;
       });
     }
+
+    const recursiveCheckbox = this.querySelector('input[name="recursive"]');
+    if (recursiveCheckbox) {
+      this.addEvent(recursiveCheckbox, 'change', (e) => {
+        this.#recursive = e.target.checked;
+      });
+    }
   }
 
   /** @returns {string[]} */
@@ -269,28 +329,93 @@ export class ImageImport extends BaseFormApplication {
   }
 
   /**
+   * Pair token and portrait files by relative path (with unique-basename fallback when one folder is flat)
+   * and infer tags from subfolder segments + filename.
    * @param {string[]} tokenFiles
    * @param {string[]} portraitFiles
    * @param {string[]} knownTagIds
+   * @param {string} [tokenFolder='']
+   * @param {string} [portraitFolder='']
    * @returns {object[]}
    */
-  #buildFileMap(tokenFiles, portraitFiles, knownTagIds) {
-    const tokenMap = new Map(tokenFiles.map(f => [getFileNameFromPath(f), f]));
-    const portraitMap = new Map(portraitFiles.map(f => [getFileNameFromPath(f), f]));
-
-    const allFileNames = new Set([...tokenMap.keys(), ...portraitMap.keys()]);
-    const result = [];
-
-    for (const fileName of allFileNames) {
-      result.push({
-        fileName,
-        tokenUrl: tokenMap.get(fileName) || '',
-        portraitUrl: portraitMap.get(fileName) || '',
-        tags: parseTagsFromFileName(fileName, knownTagIds),
-      });
+  #buildFileMap(tokenFiles, portraitFiles, knownTagIds, tokenFolder = '', portraitFolder = '') {
+    const tokenByRel = new Map();
+    for (const f of tokenFiles) {
+      const relKey = getRelativeBasePath(f, tokenFolder);
+      if (relKey) tokenByRel.set(relKey, f);
     }
 
-    return result;
+    const portraitByRel = new Map();
+    for (const f of portraitFiles) {
+      const relKey = getRelativeBasePath(f, portraitFolder);
+      if (relKey) portraitByRel.set(relKey, f);
+    }
+
+    const pairs = [];
+    const pairedTokenRels = new Set();
+    const pairedPortraitRels = new Set();
+
+    // 1. Exact relative-path match (preserves subfolder hierarchy, avoids collisions like human/01 vs elf/01)
+    for (const [relKey, tokenUrl] of tokenByRel) {
+      if (portraitByRel.has(relKey)) {
+        pairs.push({ tokenUrl, portraitUrl: portraitByRel.get(relKey) });
+        pairedTokenRels.add(relKey);
+        pairedPortraitRels.add(relKey);
+      }
+    }
+
+    // 2. Unique-basename fallback for remaining unpaired files (e.g. subfolders in tokens, flat portraits)
+    const remainingTokens = [...tokenByRel.entries()].filter(([k]) => !pairedTokenRels.has(k));
+    const remainingPortraits = [...portraitByRel.entries()].filter(([k]) => !pairedPortraitRels.has(k));
+
+    const tokenByBase = new Map();
+    for (const [relKey, url] of remainingTokens) {
+      const base = stripFileExtension(getFileNameFromPath(url)).toLowerCase();
+      if (!tokenByBase.has(base)) tokenByBase.set(base, []);
+      tokenByBase.get(base).push({ relKey, url });
+    }
+
+    const portraitByBase = new Map();
+    for (const [relKey, url] of remainingPortraits) {
+      const base = stripFileExtension(getFileNameFromPath(url)).toLowerCase();
+      if (!portraitByBase.has(base)) portraitByBase.set(base, []);
+      portraitByBase.get(base).push({ relKey, url });
+    }
+
+    for (const [base, tEntries] of tokenByBase) {
+      const pEntries = portraitByBase.get(base);
+      if (tEntries.length === 1 && pEntries?.length === 1) {
+        pairs.push({ tokenUrl: tEntries[0].url, portraitUrl: pEntries[0].url });
+        pairedTokenRels.add(tEntries[0].relKey);
+        pairedPortraitRels.add(pEntries[0].relKey);
+      }
+    }
+
+    // 3. Unpaired single-sided files
+    for (const [relKey, tokenUrl] of remainingTokens) {
+      if (!pairedTokenRels.has(relKey)) {
+        pairs.push({ tokenUrl, portraitUrl: '' });
+      }
+    }
+    for (const [relKey, portraitUrl] of remainingPortraits) {
+      if (!pairedPortraitRels.has(relKey)) {
+        pairs.push({ tokenUrl: '', portraitUrl });
+      }
+    }
+
+    return pairs.map(({ tokenUrl, portraitUrl }) => {
+      const fileName = getFileNameFromPath(portraitUrl || tokenUrl);
+      const rawTags = [
+        ...(tokenUrl ? parseTagsFromPath(tokenUrl, knownTagIds, tokenFolder) : []),
+        ...(portraitUrl ? parseTagsFromPath(portraitUrl, knownTagIds, portraitFolder) : []),
+      ];
+      return {
+        fileName,
+        tokenUrl,
+        portraitUrl,
+        tags: expandParentTags([...new Set(rawTags)], tag),
+      };
+    });
   }
 
   /**
@@ -304,6 +429,8 @@ export class ImageImport extends BaseFormApplication {
 
     const toCreate = [];
     const toUpdate = [];
+    let createdCount = 0;
+    let updatedCount = 0;
 
     for (const file of fileMap) {
       const existing = tagIndex.findByUrl(file.tokenUrl) || tagIndex.findByUrl(file.portraitUrl);
@@ -330,6 +457,7 @@ export class ImageImport extends BaseFormApplication {
           };
           await page.setFlag(MODULE_ID, FLAGS.IMAGE_DATA, newImageData);
           tagIndex.updateImage(page.uuid, newImageData);
+          updatedCount++;
         }
       } catch (error) {
         logger.warn(`Failed to update image ${existing.uuid}:`, error);
@@ -360,7 +488,8 @@ export class ImageImport extends BaseFormApplication {
         for (const page of createdPages) {
           const imageData = page.getFlag(MODULE_ID, FLAGS.IMAGE_DATA);
           if (imageData) {
-            tagIndex.addImage(page.uuid, imageData, journal.uuid);
+            tagIndex.addImage(page.uuid, imageData, journalId);
+            createdCount++;
           }
         }
       } catch (error) {
@@ -368,6 +497,6 @@ export class ImageImport extends BaseFormApplication {
       }
     }
 
-    return { created: toCreate.length, updated: toUpdate.length };
+    return { created: createdCount, updated: updatedCount };
   }
 }

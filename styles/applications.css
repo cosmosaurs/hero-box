@@ -1,4 +1,4 @@
-/* ========================================
+* ========================================
    shared window chrome styles
    ======================================== */
 
@@ -16,8 +16,10 @@
   justify-content: flex-end;
 }
 
+.theme-dark [id^="cs-hero-box-"] .window-header,
 [theme="dark"] [id^="cs-hero-box-"] .window-header {
   background: var(--cs-hero-box-bg-primary);
+  color: var(--cs-hero-box-text-primary);
 }
 
 /* centered title sitting behind the header controls */
@@ -34,15 +36,12 @@
   z-index: 0;
 }
 
-[theme="dark"] [id^="cs-hero-box-"] .window-header {
-  color: var(--cs-hero-box-text-primary);
-}
-
 /* make sure header buttons sit above the title */
 [id^="cs-hero-box-"] .window-header .header-control,
 [id^="cs-hero-box-"] .window-header button {
   position: relative;
   z-index: 1;
+  flex-shrink: 0;
 }
 
 [id^="cs-hero-box-"] .window-content {
@@ -251,12 +250,12 @@
    data manager — the main beast
    ======================================== */
 
-/* hide the default title, we use tabs instead */
-.cs-hero-box-data-manager .window-header {
+/* hide the default title in manager mode (tabs act as navigation) */
+.cs-hero-box-data-manager-window .window-header {
   padding: var(--cs-hero-box-spacing-xs) var(--cs-hero-box-spacing-sm);
 }
 
-.cs-hero-box-data-manager .window-header .window-title {
+.cs-hero-box-data-manager-window:not(.picker-mode) .window-header .window-title {
   display: none;
 }
 
@@ -352,6 +351,13 @@
   display: flex;
   align-items: center;
   gap: var(--cs-hero-box-spacing-xs);
+}
+
+.cs-hero-box-data-manager__broken-btn.active {
+  background: rgba(212, 44, 44, 0.2);
+  border-color: var(--color-level-error);
+  color: var(--color-level-error);
+  font-weight: bold;
 }
 
 /* main content area — sidebar + grid/list side by side */
@@ -458,7 +464,7 @@
   flex-direction: column;
   gap: 2px;
   overflow: hidden;
-  max-height: 500px;
+  max-height: 2000px;
   transition: max-height 0.3s ease, opacity 0.2s ease;
   opacity: 1;
 }
@@ -506,6 +512,87 @@
 
 .cs-hero-box-data-manager__tag-count {
   opacity: 0.7;
+}
+
+/* nested role-group subtree inside the sidebar */
+.cs-hero-box-data-manager__tag-tree {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.cs-hero-box-data-manager__tag-tree-row {
+  display: flex;
+  align-items: stretch;
+  gap: 2px;
+}
+
+.cs-hero-box-data-manager__tag-tree-row .cs-hero-box-data-manager__tag {
+  flex: 1;
+  min-width: 0;
+}
+
+.cs-hero-box-data-manager__tag-name {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cs-hero-box-data-manager__group-icon {
+  font-size: 0.75em;
+  opacity: 0.75;
+  flex-shrink: 0;
+}
+
+.cs-hero-box-data-manager__tag-expand {
+  width: 24px;
+  padding: 0;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid transparent;
+  border-radius: var(--cs-hero-box-radius-sm);
+  background: var(--cs-hero-box-bg-secondary);
+  color: var(--cs-hero-box-text-muted);
+  cursor: pointer;
+  font-size: var(--cs-hero-box-font-size-xs);
+  transition: background var(--cs-hero-box-transition-fast), color var(--cs-hero-box-transition-fast);
+}
+
+.cs-hero-box-data-manager__tag-expand:hover {
+  background: var(--cs-hero-box-bg-hover);
+  color: var(--cs-hero-box-text-primary);
+}
+
+.cs-hero-box-data-manager__tag-expand i {
+  transition: transform var(--cs-hero-box-transition-fast);
+}
+
+.cs-hero-box-data-manager__tag-tree.collapsed .cs-hero-box-data-manager__tag-expand i {
+  transform: rotate(-90deg);
+}
+
+.cs-hero-box-data-manager__tag-children {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-left: var(--cs-hero-box-spacing-sm);
+  padding-left: var(--cs-hero-box-spacing-xs);
+  border-left: 2px solid var(--cs-hero-box-border-color);
+}
+
+.cs-hero-box-data-manager__tag-tree.collapsed .cs-hero-box-data-manager__tag-children {
+  display: none;
+}
+
+.cs-hero-box-data-manager__tag--child {
+  font-size: var(--cs-hero-box-font-size-sm);
+  padding: 2px var(--cs-hero-box-spacing-sm);
 }
 
 /* right side main content panel */
@@ -587,6 +674,28 @@
   width: var(--cs-hero-box-card-width);
   height: var(--cs-hero-box-card-width);
   overflow: hidden;
+  position: relative;
+}
+
+.cs-hero-box-data-manager__card.is-broken {
+  border-color: var(--color-level-error);
+}
+
+.cs-hero-box-data-manager__broken-badge {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  padding: 1px 6px;
+  border-radius: var(--cs-hero-box-radius-sm);
+  background: rgba(200, 30, 30, 0.9);
+  color: #fff;
+  font-size: var(--cs-hero-box-font-size-xs);
+  font-weight: bold;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  pointer-events: none;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.5);
 }
 
 .cs-hero-box-data-manager__image-container img {
@@ -853,10 +962,61 @@
 .cs-hero-box-data-manager__tag-id {
   font-family: monospace;
   color: var(--cs-hero-box-text-primary);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.cs-hero-box-data-manager__row-expand {
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--cs-hero-box-bg-tertiary);
+  border: 1px solid var(--cs-hero-box-border-color);
+  border-radius: var(--cs-hero-box-radius-sm);
+  color: var(--cs-hero-box-text-muted);
+  cursor: pointer;
+  font-size: var(--cs-hero-box-font-size-xs);
+  transition: background var(--cs-hero-box-transition-fast), color var(--cs-hero-box-transition-fast);
+}
+
+.cs-hero-box-data-manager__row-expand:hover {
+  background: var(--cs-hero-box-bg-hover);
+  color: var(--cs-hero-box-text-primary);
+}
+
+.cs-hero-box-data-manager__row-expand i {
+  transition: transform var(--cs-hero-box-transition-fast);
+}
+
+.cs-hero-box-data-manager__tag-row.collapsed .cs-hero-box-data-manager__row-expand i {
+  transform: rotate(-90deg);
+}
+
+.cs-hero-box-data-manager__child-count {
+  font-size: var(--cs-hero-box-font-size-xs);
+  color: var(--cs-hero-box-text-muted);
 }
 
 .cs-hero-box-data-manager__tag-label {
   color: var(--cs-hero-box-text-secondary);
+  display: flex;
+  align-items: center;
+  gap: var(--cs-hero-box-spacing-xs);
+}
+
+.cs-hero-box-data-manager__weight-badge {
+  font-size: var(--cs-hero-box-font-size-xs);
+  padding: 1px 6px;
+  border-radius: var(--cs-hero-box-radius-sm);
+  background: rgba(255, 128, 0, 0.16);
+  border: 1px solid rgba(255, 128, 0, 0.4);
+  color: var(--color-border-highlight);
+  font-weight: bold;
 }
 
 /* category badge pill */
@@ -942,6 +1102,21 @@
   color: var(--cs-hero-box-text-muted);
 }
 
+/* broken file indicator inside the hover popup */
+.cs-hero-box-card-popup__broken {
+  font-size: var(--cs-hero-box-font-size-xs);
+  color: var(--color-level-error);
+  font-weight: bold;
+  padding: 4px 6px;
+  margin-bottom: var(--cs-hero-box-spacing-xs);
+  background: rgba(212, 44, 44, 0.12);
+  border: 1px solid rgba(212, 44, 44, 0.4);
+  border-radius: var(--cs-hero-box-radius-sm);
+  display: flex;
+  align-items: center;
+  gap: var(--cs-hero-box-spacing-xs);
+}
+
 /* tags list inside the popup */
 .cs-hero-box-card-popup__tags {
   font-size: var(--cs-hero-box-font-size-sm);
@@ -998,9 +1173,20 @@
   color: var(--cs-hero-box-text-primary);
 }
 
-.cs-hero-box-image-import .form-group:not(.cs-hero-box-image-import__settings) label {
+.cs-hero-box-image-import .form-group:not(.cs-hero-box-image-import__settings) label:not(.cs-hero-box-image-import__checkbox-inline) {
   display: block;
   margin-block-end: var(--cs-hero-box-spacing-xs);
+}
+
+.cs-hero-box-image-import__checkbox-inline {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--cs-hero-box-spacing-xs);
+  cursor: pointer;
+}
+
+.cs-hero-box-image-import__checkbox-inline input[type="checkbox"] {
+  margin: 0;
 }
 
 .cs-hero-box-image-import input {
@@ -1061,6 +1247,7 @@
   gap: var(--cs-hero-box-spacing-md);
   padding: var(--cs-hero-box-spacing-sm);
   height: 100%;
+  max-height: 75vh;
   overflow: hidden;
   background: var(--cs-hero-box-bg-primary);
   color: var(--cs-hero-box-text-primary);
@@ -1250,6 +1437,49 @@
   gap: var(--cs-hero-box-spacing-xs);
 }
 
+.cs-hero-box-editor__group-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--cs-hero-box-spacing-sm);
+}
+
+.cs-hero-box-editor__group-icon {
+  font-size: 0.78em;
+  opacity: 0.75;
+}
+
+.cs-hero-box-editor__group-toggle {
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--cs-hero-box-bg-secondary);
+  border: 1px solid var(--cs-hero-box-border-color);
+  border-radius: var(--cs-hero-box-radius-sm);
+  color: var(--cs-hero-box-text-muted);
+  cursor: pointer;
+  font-size: var(--cs-hero-box-font-size-xs);
+  transition: background var(--cs-hero-box-transition-fast), color var(--cs-hero-box-transition-fast);
+}
+
+.cs-hero-box-editor__group-toggle:hover {
+  background: var(--cs-hero-box-bg-hover);
+  color: var(--cs-hero-box-text-primary);
+}
+
+.cs-hero-box-editor__group-toggle i {
+  transform: rotate(-90deg);
+  transition: transform var(--cs-hero-box-transition-fast);
+}
+
+.cs-hero-box-editor__group-toggle.expanded i {
+  transform: rotate(0deg);
+}
+
 .cs-hero-box-editor__subraces {
   display: flex;
   flex-wrap: wrap;
@@ -1394,12 +1624,6 @@
   width: 100%;
 }
 
-/* perf hint — let the browser skip offscreen card rendering */
-.cs-hero-box-data-manager__card {
-  content-visibility: auto;
-  contain-intrinsic-size: 128px 148px;
-}
-
 /* ========================================
    deletion progress bar (shown during bulk delete)
    ======================================== */
@@ -1449,17 +1673,4 @@
   appearance: auto;
   background: var(--cs-hero-box-bg-tertiary);
   border: 1px solid var(--cs-hero-box-border-color);
-}
-
-[id^="cs-hero-box-"] .window-header .header-control,
-[id^="cs-hero-box-"] .window-header button {
-  position: relative;
-  z-index: 1;
-}
-
-[id^="cs-hero-box-"] .window-header .header-control,
-[id^="cs-hero-box-"] .window-header button {
-  position: relative;
-  z-index: 1;
-  flex-shrink: 0;
 }

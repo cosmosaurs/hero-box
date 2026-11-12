@@ -1,4 +1,4 @@
-<div class="cs-hero-box-editor cs-hero-box-editor--{{mode}}">
+div class="cs-hero-box-editor cs-hero-box-editor--{{mode}}">
 
   {{!-- IMAGE MODE --}}
   {{#if isImageMode}}
@@ -119,12 +119,33 @@
         {{#if roleTags.length}}
           <fieldset>
             <legend>{{localize "cs-hero-box.editor.role"}}</legend>
-            <div class="cs-hero-box-editor__tag-grid">
+            <div class="cs-hero-box-editor__race-list">
               {{#each roleTags}}
-                <label class="cs-hero-box-editor__tag-option">
-                  <input type="checkbox" name="tag.{{id}}" {{#if isSelected}}checked{{/if}} />
-                  <span>{{label}}</span>
-                </label>
+                <div class="cs-hero-box-editor__race-item">
+                  <div class="cs-hero-box-editor__group-row">
+                    <label class="cs-hero-box-editor__tag-option">
+                      <input type="checkbox" name="tag.{{id}}" {{#if isRoleGroup}}data-role-group-id="{{id}}"{{/if}} {{#if isSelected}}checked{{/if}} />
+                      {{#if isRoleGroup}}<i class="fas fa-layer-group cs-hero-box-editor__group-icon"></i>{{/if}}
+                      <span>{{label}}</span>
+                    </label>
+                    {{#if hasRoles}}
+                      <button type="button" class="cs-hero-box-editor__group-toggle {{#if showRoles}}expanded{{/if}}" data-role-group-toggle="{{id}}">
+                        <i class="fas fa-chevron-down"></i>
+                      </button>
+                    {{/if}}
+                  </div>
+
+                  {{#if hasRoles}}
+                    <div class="cs-hero-box-editor__subraces" data-role-group-container="{{id}}" {{#unless showRoles}}style="display: none"{{/unless}}>
+                      {{#each roles}}
+                        <label class="cs-hero-box-editor__tag-option cs-hero-box-editor__tag-option--subrace">
+                          <input type="checkbox" name="tag.{{id}}" {{#if isSelected}}checked{{/if}} />
+                          <span>{{label}}</span>
+                        </label>
+                      {{/each}}
+                    </div>
+                  {{/if}}
+                </div>
               {{/each}}
             </div>
           </fieldset>
@@ -171,85 +192,126 @@
 
   {{!-- NAME MODE --}}
   {{#if isNameMode}}
-    <div class="form-group">
-      <label>{{localize "cs-hero-box.editor.nameLabel"}}</label>
-      <input type="text" name="name" value="{{name}}" placeholder="{{localize 'cs-hero-box.editor.namePlaceholder'}}" />
-    </div>
-
-    <div class="form-group">
-      <label>{{localize "cs-hero-box.editor.nameType"}}</label>
-      <select name="type">
-        {{#each nameTypes}}
-          <option value="{{id}}" {{#if isSelected}}selected{{/if}}>{{label}}</option>
-        {{/each}}
-      </select>
-    </div>
-
-    <fieldset>
-      <legend>{{localize "cs-hero-box.editor.gender"}}</legend>
-      <div class="cs-hero-box-editor__tag-grid">
-        {{#each genderTags}}
-          <label class="cs-hero-box-editor__tag-option">
-            <input type="checkbox" name="gender.{{id}}" {{#if isSelected}}checked{{/if}} />
-            <span>{{label}}</span>
-          </label>
-        {{/each}}
+    <div class="cs-hero-box-editor__scrollable" data-scroll-id="editor-scroll">
+      <div class="form-group">
+        <label>{{localize "cs-hero-box.editor.nameLabel"}}</label>
+        <input type="text" name="name" value="{{name}}" placeholder="{{localize 'cs-hero-box.editor.namePlaceholder'}}" />
       </div>
-    </fieldset>
 
-    <fieldset>
-      <legend>{{localize "cs-hero-box.editor.race"}}</legend>
-      <div class="cs-hero-box-editor__race-list">
-        {{#each raceTags}}
-          <div class="cs-hero-box-editor__race-item">
+      <div class="form-group">
+        <label>{{localize "cs-hero-box.editor.nameType"}}</label>
+        <select name="type">
+          {{#each nameTypes}}
+            <option value="{{id}}" {{#if isSelected}}selected{{/if}}>{{label}}</option>
+          {{/each}}
+        </select>
+      </div>
+
+      <fieldset>
+        <legend>{{localize "cs-hero-box.editor.gender"}}</legend>
+        <div class="cs-hero-box-editor__tag-grid">
+          {{#each genderTags}}
             <label class="cs-hero-box-editor__tag-option">
-              <input type="checkbox" name="race.{{id}}" data-race-id="{{id}}" {{#if isSelected}}checked{{/if}} />
+              <input type="checkbox" name="gender.{{id}}" {{#if isSelected}}checked{{/if}} />
               <span>{{label}}</span>
             </label>
-            
-            {{#if hasSubraces}}
-              <div class="cs-hero-box-editor__subraces" data-subrace-container="{{id}}" {{#unless showSubraces}}style="display: none"{{/unless}}>
-                {{#each subraces}}
-                  <label class="cs-hero-box-editor__tag-option cs-hero-box-editor__tag-option--subrace">
-                    <input type="checkbox" name="subrace.{{id}}" {{#if isSelected}}checked{{/if}} />
+          {{/each}}
+        </div>
+      </fieldset>
+
+      <fieldset>
+        <legend>{{localize "cs-hero-box.editor.race"}}</legend>
+        <div class="cs-hero-box-editor__race-list">
+          {{#each raceTags}}
+            <div class="cs-hero-box-editor__race-item">
+              <label class="cs-hero-box-editor__tag-option">
+                <input type="checkbox" name="race.{{id}}" data-race-id="{{id}}" {{#if isSelected}}checked{{/if}} />
+                <span>{{label}}</span>
+              </label>
+              
+              {{#if hasSubraces}}
+                <div class="cs-hero-box-editor__subraces" data-subrace-container="{{id}}" {{#unless showSubraces}}style="display: none"{{/unless}}>
+                  {{#each subraces}}
+                    <label class="cs-hero-box-editor__tag-option cs-hero-box-editor__tag-option--subrace">
+                      <input type="checkbox" name="subrace.{{id}}" {{#if isSelected}}checked{{/if}} />
+                      <span>{{label}}</span>
+                    </label>
+                  {{/each}}
+                </div>
+              {{/if}}
+            </div>
+          {{/each}}
+        </div>
+      </fieldset>
+
+      {{#if roleTags.length}}
+        <fieldset>
+          <legend>{{localize "cs-hero-box.editor.role"}}</legend>
+          <div class="cs-hero-box-editor__race-list">
+            {{#each roleTags}}
+              <div class="cs-hero-box-editor__race-item">
+                <div class="cs-hero-box-editor__group-row">
+                  <label class="cs-hero-box-editor__tag-option">
+                    {{#if isRoleGroup}}
+                      <input type="checkbox" name="roleGroup.{{id}}" data-role-group-id="{{id}}" {{#if isSelected}}checked{{/if}} />
+                      <i class="fas fa-layer-group cs-hero-box-editor__group-icon"></i>
+                    {{else}}
+                      <input type="checkbox" name="role.{{id}}" {{#if isSelected}}checked{{/if}} />
+                    {{/if}}
                     <span>{{label}}</span>
                   </label>
-                {{/each}}
+                  {{#if hasRoles}}
+                    <button type="button" class="cs-hero-box-editor__group-toggle {{#if showRoles}}expanded{{/if}}" data-role-group-toggle="{{id}}">
+                      <i class="fas fa-chevron-down"></i>
+                    </button>
+                  {{/if}}
+                </div>
+
+                {{#if hasRoles}}
+                  <div class="cs-hero-box-editor__subraces" data-role-group-container="{{id}}" {{#unless showRoles}}style="display: none"{{/unless}}>
+                    {{#each roles}}
+                      <label class="cs-hero-box-editor__tag-option cs-hero-box-editor__tag-option--subrace">
+                        <input type="checkbox" name="role.{{id}}" {{#if isSelected}}checked{{/if}} />
+                        <span>{{label}}</span>
+                      </label>
+                    {{/each}}
+                  </div>
+                {{/if}}
               </div>
-            {{/if}}
+            {{/each}}
+          </div>
+        </fieldset>
+      {{/if}}
+
+      <fieldset class="cs-hero-box-editor__locales">
+        <legend>{{localize "cs-hero-box.editor.names"}}</legend>
+        
+        {{#each localeSets}}
+          <div class="cs-hero-box-editor__locale-set" data-index="{{index}}">
+            <div class="cs-hero-box-editor__locale-header">
+              <select name="localeSet.{{index}}.locale">
+                {{#each ../availableLocales}}
+                  <option value="{{id}}" {{#if (eq id ../locale)}}selected{{/if}}>{{label}}</option>
+                {{/each}}
+              </select>
+              {{#if canRemove}}
+                <button type="button" class="cs-hero-box-editor__remove-locale" data-action="removeLocale" data-index="{{index}}">
+                  <i class="fas fa-times"></i>
+                </button>
+              {{/if}}
+            </div>
+            <input type="text" name="localeSet.{{index}}.names" value="{{names}}" placeholder="{{localize 'cs-hero-box.editor.namesPlaceholder'}}" />
           </div>
         {{/each}}
-      </div>
-    </fieldset>
 
-    <fieldset class="cs-hero-box-editor__locales">
-      <legend>{{localize "cs-hero-box.editor.names"}}</legend>
-      
-      {{#each localeSets}}
-        <div class="cs-hero-box-editor__locale-set" data-index="{{index}}">
-          <div class="cs-hero-box-editor__locale-header">
-            <select name="localeSet.{{index}}.locale">
-              {{#each ../availableLocales}}
-                <option value="{{id}}" {{#if (eq id ../locale)}}selected{{/if}}>{{label}}</option>
-              {{/each}}
-            </select>
-            {{#if canRemove}}
-              <button type="button" class="cs-hero-box-editor__remove-locale" data-action="removeLocale" data-index="{{index}}">
-                <i class="fas fa-times"></i>
-              </button>
-            {{/if}}
-          </div>
-          <input type="text" name="localeSet.{{index}}.names" value="{{names}}" placeholder="{{localize 'cs-hero-box.editor.namesPlaceholder'}}" />
-        </div>
-      {{/each}}
-
-      {{#if canAddLocale}}
-        <button type="button" class="cs-hero-box-editor__add-locale" data-action="addLocale">
-          <i class="fas fa-plus"></i>
-          {{localize "cs-hero-box.editor.addLocale"}}
-        </button>
-      {{/if}}
-    </fieldset>
+        {{#if canAddLocale}}
+          <button type="button" class="cs-hero-box-editor__add-locale" data-action="addLocale">
+            <i class="fas fa-plus"></i>
+            {{localize "cs-hero-box.editor.addLocale"}}
+          </button>
+        {{/if}}
+      </fieldset>
+    </div>
   {{/if}}
 
   {{!-- TAG MODE --}}
@@ -283,6 +345,22 @@
           <option value="{{value}}" {{#if isSelected}}selected{{/if}}>{{label}}</option>
         {{/each}}
       </select>
+    </div>
+
+    <div class="form-group cs-hero-box-editor__role-group" {{#unless showRoleGroup}}style="display: none"{{/unless}}>
+      <label>{{localize "cs-hero-box.editor.roleGroup"}}</label>
+      <select name="roleGroupId">
+        <option value="">{{localize "cs-hero-box.editor.noRoleGroup"}}</option>
+        {{#each roleGroups}}
+          <option value="{{value}}" {{#if isSelected}}selected{{/if}}>{{label}}</option>
+        {{/each}}
+      </select>
+    </div>
+
+    <div class="form-group cs-hero-box-editor__role-weight" {{#unless showRoleGroup}}style="display: none"{{/unless}}>
+      <label>{{localize "cs-hero-box.editor.roleWeight"}}</label>
+      <input type="number" name="weight" value="{{tagWeight}}" min="0.1" max="100" step="0.1" />
+      <p class="cs-hero-box-hint">{{localize "cs-hero-box.editor.roleWeightHint"}}</p>
     </div>
   {{/if}}
 </div>

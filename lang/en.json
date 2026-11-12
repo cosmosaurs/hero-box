@@ -1,6 +1,11 @@
-{
+
   "cs-hero-box": {
     "name": "Hero in a Box",
+
+    "common": {
+      "save": "Save",
+      "cancel": "Cancel"
+    },
 
     "settings": {
       "developerMode": {
@@ -71,7 +76,8 @@
       "delete": "Delete",
       "deleteConfirm": {
         "title": "Confirm Deletion",
-        "content": "Are you sure you want to delete {name}? This cannot be undone."
+        "content": "Are you sure you want to delete {name}? This cannot be undone.",
+        "contentMultiple": "Are you sure you want to delete {count} images? This cannot be undone."
       },
       "deleting": "Deleting {count} images...",
       "deleted": "Deleted {count} images.",
@@ -83,7 +89,15 @@
       "testResult": "Generated: {name}",
       "createActor": "Create Actor",
       "refreshTags": "Refresh Tags from Filenames",
-      "tagsTitle": "Tags"
+      "tagsTitle": "Tags",
+      "checkBroken": "Check Broken",
+      "checkBrokenTooltip": "Scan all indexed images for missing (404) token or portrait files",
+      "brokenFilterActive": "Broken ({count})",
+      "brokenChecking": "Checking images: {current} / {total}...",
+      "brokenNone": "All {total} images are valid!",
+      "brokenFound": "Found {count} broken images out of {total}. Showing broken only.",
+      "brokenToken": "Missing token file",
+      "brokenPortrait": "Missing portrait file"
     },
 
     "imagePicker": {
@@ -111,6 +125,8 @@
       "portraitFolder": "Portrait Folder",
       "portraitFolderPlaceholder": "modules/my-module/portraits",
       "portraitFolderHint": "Folder containing portrait images.",
+      "recursive": "Scan Subfolders",
+      "recursiveHint": "Recursively scans subfolders and detects tags from both folder and file names.",
       "add": "Add Image",
       "import": "Start Import",
       "error": "An error occurred during import.",
@@ -143,6 +159,7 @@
       "gender": "Gender",
       "age": "Age",
       "race": "Race",
+      "roleGroup": "Role Group",
       "role": "Role",
       "other": "Other",
       "customTags": "Custom Tags",
@@ -162,9 +179,13 @@
       "tagCategory": "Category",
       "parentRace": "Parent Race",
       "selectRace": "Select Race...",
+      "noRoleGroup": "None (Ungrouped)",
+      "roleWeight": "Spawn Weight",
+      "roleWeightHint": "Relative chance within a role group or multi-role selection (default: 1). E.g. Warrior = 5, Leader = 1.",
       "tagErrorNoId": "Tag ID is required.",
       "tagErrorBuiltin": "Cannot modify built-in tags.",
-      "tagErrorDuplicate": "A tag with this ID already exists."
+      "tagErrorDuplicate": "A tag with this ID already exists.",
+      "saveError": "Failed to save changes."
     },
 
     "dataSources": {
@@ -203,6 +224,7 @@
         "subrace": "Subrace",
         "gender": "Gender",
         "age": "Age",
+        "roleGroup": "Role Group",
         "role": "Role",
         "other": "Other",
         "images": "Selected Images",
@@ -247,9 +269,14 @@
 
     "actor": {
       "created": "Created actor: {name}",
+      "updated": "Updated actor: {name}",
       "randomFromImages": "Unknown Hero",
       "randomPrefix": "Random",
       "fallbackName": "Character"
+    },
+
+    "nameFormat": {
+      "quotedNickname": "\"{nickname}\""
     },
 
     "errors": {
@@ -261,6 +288,7 @@
     "tagCategory": {
       "race": "Race",
       "subrace": "Subrace",
+      "roleGroup": "Role Group",
       "role": "Role",
       "other": "Other",
       "builtin": "System"

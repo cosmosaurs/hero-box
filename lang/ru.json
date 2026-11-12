@@ -1,6 +1,11 @@
-{
+
   "cs-hero-box": {
     "name": "Hero in a Box",
+
+    "common": {
+      "save": "Сохранить",
+      "cancel": "Отмена"
+    },
 
     "settings": {
       "developerMode": {
@@ -71,7 +76,8 @@
       "delete": "Удалить",
       "deleteConfirm": {
         "title": "Подтверждение удаления",
-        "content": "Вы уверены, что хотите удалить {name}? Это действие нельзя отменить."
+        "content": "Вы уверены, что хотите удалить {name}? Это действие нельзя отменить.",
+        "contentMultiple": "Вы уверены, что хотите удалить выбранные изображения ({count})? Это действие нельзя отменить."
       },
       "deleting": "Удаление {count} изображений...",
       "deleted": "Удалено {count} изображений.",
@@ -83,7 +89,15 @@
       "testResult": "Сгенерировано: {name}",
       "createActor": "Создать актёра",
       "refreshTags": "Обновить теги из имён файлов",
-      "tagsTitle": "Теги"
+      "tagsTitle": "Теги",
+      "checkBroken": "Проверить битые",
+      "checkBrokenTooltip": "Проверить все изображения в базе на отсутствующие (404) файлы токенов и портретов",
+      "brokenFilterActive": "Битые ({count})",
+      "brokenChecking": "Проверка изображений: {current} / {total}...",
+      "brokenNone": "Все изображения доступны ({total})!",
+      "brokenFound": "Найдено битых изображений: {count} из {total}. Включён фильтр битых.",
+      "brokenToken": "Файл токена не найден",
+      "brokenPortrait": "Файл портрета не найден"
     },
 
     "imagePicker": {
@@ -111,6 +125,8 @@
       "portraitFolder": "Папка портретов",
       "portraitFolderPlaceholder": "modules/my-module/portraits",
       "portraitFolderHint": "Папка с изображениями портретов.",
+      "recursive": "Сканировать вложенные папки",
+      "recursiveHint": "Рекурсивно обходит подпапки и определяет теги из имён папок и файлов.",
       "add": "Добавить",
       "import": "Начать импорт",
       "error": "Произошла ошибка при импорте.",
@@ -143,6 +159,7 @@
       "gender": "Пол",
       "age": "Возраст",
       "race": "Вид",
+      "roleGroup": "Группа ролей",
       "role": "Роль",
       "other": "Прочее",
       "customTags": "Пользовательские теги",
@@ -162,9 +179,13 @@
       "tagCategory": "Категория",
       "parentRace": "Родительский вид",
       "selectRace": "Выберите вид...",
+      "noRoleGroup": "Без группы",
+      "roleWeight": "Вес выпадения",
+      "roleWeightHint": "Относительный шанс при выборе группы или нескольких ролей (по умолчанию: 1). Например: Воин = 5, Главарь = 1.",
       "tagErrorNoId": "Необходимо указать ID тега.",
       "tagErrorBuiltin": "Нельзя изменять встроенные теги.",
-      "tagErrorDuplicate": "Тег с таким ID уже существует."
+      "tagErrorDuplicate": "Тег с таким ID уже существует.",
+      "saveError": "Не удалось сохранить изменения."
     },
 
     "dataSources": {
@@ -203,6 +224,7 @@
         "subrace": "Подвид",
         "gender": "Пол",
         "age": "Возраст",
+        "roleGroup": "Группа ролей",
         "role": "Роль",
         "other": "Прочее",
         "images": "Выбранные изображения",
@@ -247,9 +269,14 @@
 
     "actor": {
       "created": "Создан актёр: {name}",
+      "updated": "Обновлён актёр: {name}",
       "randomFromImages": "Неизвестный герой",
       "randomPrefix": "Случайный",
       "fallbackName": "Персонаж"
+    },
+
+    "nameFormat": {
+      "quotedNickname": "«{nickname}»"
     },
 
     "errors": {
@@ -261,6 +288,7 @@
     "tagCategory": {
       "race": "Вид",
       "subrace": "Подвид",
+      "roleGroup": "Группа ролей",
       "role": "Роль",
       "other": "Прочее",
       "builtin": "Системный"

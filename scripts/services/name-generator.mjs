@@ -1,4 +1,4 @@
-/**
+**
  * @fileoverview Loads name lists from configured sources at world ready; exposes synchronous `generate()`.
  */
 
@@ -16,24 +16,30 @@ class NameGeneratorService {
   #namesBySetId = new Map();
   #tagCounts = new Map();
   #initialized = false;
-  #raceTagIds = null;
+  #initPromise = null;
 
   /** Load all name sets from enabled data sources (world ready). */
   async initialize() {
     if (this.#initialized) return;
+    if (this.#initPromise) return this.#initPromise;
 
-    const timer = logger.time('Name generator initialization');
+    this.#initPromise = (async () => {
+      const timer = logger.time('Name generator initialization');
 
-    try {
-      await this.#loadFromSources();
-      this.#buildTagCounts();
-      this.#initialized = true;
-      logger.info(`Loaded ${this.#nameMeta.length} name sets`);
-    } catch (error) {
-      logger.error('Failed to initialize name generator:', error);
-    } finally {
-      timer.end();
-    }
+      try {
+        await this.#loadFromSources();
+        this.#buildTagCounts();
+        this.#initialized = true;
+        logger.info(`Loaded ${this.#nameMeta.length} name sets`);
+      } catch (error) {
+        logger.error('Failed to initialize name generator:', error);
+      } finally {
+        timer.end();
+        this.#initPromise = null;
+      }
+    })();
+
+    return this.#initPromise;
   }
 
   /**
@@ -46,7 +52,8 @@ class NameGeneratorService {
       return this.#fallbackName();
     }
 
-    const context = this.#parseContext(tags);
+    const baseContext = this.#parseContext(tags ?? []);
+    const context = this.#resolveRollContext(baseContext);
     if (nicknameChance !== undefined) context.nicknameChance = nicknameChance;
     if (nicknameOnlyChance !== undefined) context.nicknameOnlyChance = nicknameOnlyChance;
     if (noLastNameChance !== undefined) context.noLastNameChance = noLastNameChance;
@@ -57,16 +64,18 @@ class NameGeneratorService {
       nickname: this.#pickName('nickname', context),
     };
 
-    return this.#assembleWithHook(context, parts, tags);
+    return this.#assembleWithHook(context, parts, tags ?? []);
   }
 
   /** Clear caches and reload from sources (e.g. after data source changes). */
   async reload() {
+    if (this.#initPromise) {
+      await this.#initPromise;
+    }
     this.#nameMeta = [];
     this.#namesBySetId.clear();
     this.#tagCounts.clear();
     this.#initialized = false;
-    this.#raceTagIds = null;
     await this.initialize();
   }
 
@@ -134,7 +143,10 @@ class NameGeneratorService {
 
     if (useNickname && nickname) {
       if (segments.length || (!skipLastName && lastName)) {
-        segments.push(`«${nickname}»`);
+        const quoted = game.i18n?.has('cs-hero-box.nameFormat.quotedNickname')
+          ? game.i18n.format('cs-hero-box.nameFormat.quotedNickname', { nickname })
+          : `"${nickname}"`;
+        segments.push(quoted);
       } else {
         segments.push(nickname);
       }
@@ -149,18 +161,33 @@ class NameGeneratorService {
 
   /**
    * @param {string[]} tags
-   * @returns {{ race: string|null, subrace: string|null, gender: string|null, age: string|null }}
+   * @returns {{ race: string|null, subrace: string|null, roleGroups: string[], roles: string[], gender: string|null, age: string|null }}
    */
   #parseContext(tags) {
     const raceTagIds = this.#getRaceTagIds();
+    const roleGroupTagIds = this.#getRoleGroupTagIds();
+    const roleTagIds = this.#getRoleTagIds();
 
     const races = tags.filter(t => raceTagIds.has(t));
-    const race = races.length > 0 ? races[Math.floor(Math.random() * races.length)] : null;
+    let race = races.length > 0 ? races[Math.floor(Math.random() * races.length)] : null;
 
     let subrace = null;
     if (race) {
       const subraceIds = new Set(tag.getSubraces(race).map(t => t.id));
       subrace = tags.find(t => subraceIds.has(t)) ?? null;
+    } else {
+      const orphanSubrace = tags.find(t => tag.get(t)?.category === 'subrace');
+      if (orphanSubrace) {
+        subrace = orphanSubrace;
+        race = tag.get(orphanSubrace)?.parentRaceId ?? null;
+      }
+    }
+
+    const roles = tags.filter(t => roleTagIds.has(t));
+    const roleGroupSet = new Set(tags.filter(t => roleGroupTagIds.has(t)));
+    for (const r of roles) {
+      const roleGroupId = tag.get(r)?.roleGroupId;
+      if (roleGroupId) roleGroupSet.add(roleGroupId);
     }
 
     const genderValues = new Set(Object.values(GENDER_TAGS));
@@ -169,6 +196,8 @@ class NameGeneratorService {
     return {
       race,
       subrace,
+      roleGroups: [...roleGroupSet],
+      roles,
       gender: tags.find(t => genderValues.has(t)) ?? null,
       age: tags.find(t => ageValues.has(t)) ?? null,
     };
@@ -176,19 +205,68 @@ class NameGeneratorService {
 
   /** @returns {Set<string>} */
   #getRaceTagIds() {
-    if (!this.#raceTagIds) {
-      this.#raceTagIds = new Set(tag.getRaces().map(t => t.id));
-    }
-    return this.#raceTagIds;
+    return new Set(tag.getRaces().map(t => t.id));
+  }
+
+  /** @returns {Set<string>} */
+  #getRoleGroupTagIds() {
+    return new Set(tag.getRoleGroups().map(t => t.id));
+  }
+
+  /** @returns {Set<string>} */
+  #getRoleTagIds() {
+    return new Set(tag.getRoles().map(t => t.id));
   }
 
   /**
-   * @param {'firstName'|'lastName' |'nickname'} type
+   * Resolve consistent fallback race/gender across all name parts when input tags omit them
+   * and no neutral sets exist, preventing mixed-gender or mixed-race full names.
+   * @param {{ race: string|null, subrace: string|null, gender: string|null, age: string|null }} context
+   */
+  #resolveRollContext(context) {
+    const resolved = { ...context };
+
+    if (!resolved.race && !this.#findMatchingSets('firstName', resolved, { strictMissing: true }).length) {
+      const raceTagIds = this.#getRaceTagIds();
+      const candidateRaces = new Set();
+      for (const set of this.#nameMeta) {
+        if (set.type !== 'firstName') continue;
+        if (resolved.gender) {
+          const setGenders = set.tags.filter(t => t === GENDER_TAGS.MALE || t === GENDER_TAGS.FEMALE);
+          if (setGenders.length > 0 && !setGenders.includes(resolved.gender)) continue;
+        }
+        for (const t of set.tags) {
+          if (raceTagIds.has(t)) candidateRaces.add(t);
+        }
+      }
+      if (candidateRaces.size > 0) {
+        const races = [...candidateRaces];
+        resolved.race = races[Math.floor(Math.random() * races.length)];
+      }
+    }
+
+    if (!resolved.gender && !this.#findMatchingSets('firstName', resolved, { strictMissing: true }).length) {
+      const candidateGenders = Object.values(GENDER_TAGS).filter(g =>
+        this.#findMatchingSets('firstName', { ...resolved, gender: g }, { strictMissing: false }).length > 0
+      );
+      if (candidateGenders.length > 0) {
+        resolved.gender = candidateGenders[Math.floor(Math.random() * candidateGenders.length)];
+      }
+    }
+
+    return resolved;
+  }
+
+  /**
+   * @param {'firstName'|'lastName'|'nickname'} type
    * @param {{ race: string|null, subrace: string|null, gender: string|null, age: string|null }} context
    * @returns {string|null}
    */
   #pickName(type, context) {
-    const matchingSets = this.#findMatchingSets(type, context);
+    let matchingSets = this.#findMatchingSets(type, context, { strictMissing: true });
+    if (!matchingSets.length) {
+      matchingSets = this.#findMatchingSets(type, context, { strictMissing: false });
+    }
     if (!matchingSets.length) return null;
 
     const setsToUse = this.#preferSpecificSets(matchingSets, context);
@@ -205,50 +283,72 @@ class NameGeneratorService {
   /**
    * @param {string} type Name component type.
    * @param {object} context Parsed tag context.
+   * @param {{ strictMissing?: boolean }} [options]
    * @returns {object[]}
    */
-  #findMatchingSets(type, context) {
+  #findMatchingSets(type, context, { strictMissing = false } = {}) {
     const raceTagIds = this.#getRaceTagIds();
+    const roleGroupTagIds = this.#getRoleGroupTagIds();
+    const roleTagIds = this.#getRoleTagIds();
+    const genderValues = new Set(Object.values(GENDER_TAGS));
+    const ageValues = new Set(Object.values(AGE_TAGS));
 
     return this.#nameMeta.filter(set => {
       if (set.type !== type) return false;
 
       const setRaces = set.tags.filter(t => raceTagIds.has(t));
-      const setSubraces = set.tags.filter(t => {
-        const tagData = tag.get(t);
-        return tagData?.category === 'subrace';
-      });
-      const setGenders = set.tags.filter(t =>
-        t === GENDER_TAGS.MALE || t === GENDER_TAGS.FEMALE
-      );
-      const setAges = set.tags.filter(t =>
-        t === AGE_TAGS.CHILD || t === AGE_TAGS.ADULT || t === AGE_TAGS.OLD
-      );
+      const setSubraces = set.tags.filter(t => tag.get(t)?.category === 'subrace');
+      const setRoleGroups = set.tags.filter(t => roleGroupTagIds.has(t));
+      const setRoles = set.tags.filter(t => roleTagIds.has(t));
+      const setGenders = set.tags.filter(t => genderValues.has(t));
+      const setAges = set.tags.filter(t => ageValues.has(t));
 
-      if (setRaces.length > 0 && context.race && !setRaces.includes(context.race)) return false;
+      if (setRaces.length > 0) {
+        if (context.race ? !setRaces.includes(context.race) : strictMissing) return false;
+      }
       if (setSubraces.length > 0 && (!context.subrace || !setSubraces.includes(context.subrace))) return false;
-      if (setGenders.length > 0 && context.gender && !setGenders.includes(context.gender)) return false;
-      if (setAges.length > 0 && context.age && !setAges.includes(context.age)) return false;
+      if (setRoleGroups.length > 0 && (!context.roleGroups?.length || !context.roleGroups.some(g => setRoleGroups.includes(g)))) return false;
+      if (setRoles.length > 0 && (!context.roles?.length || !context.roles.some(r => setRoles.includes(r)))) return false;
+      if (setGenders.length > 0) {
+        if (context.gender ? !setGenders.includes(context.gender) : strictMissing) return false;
+      }
+      if (setAges.length > 0) {
+        if (context.age ? !setAges.includes(context.age) : strictMissing) return false;
+      }
 
       return true;
     });
   }
 
   /**
+   * Prefer sets matching more specific tags (subrace/race + role/roleGroup > role > roleGroup > subrace > race > generic).
    * @param {object[]} matchingSets
-   * @param {{ subrace: string|null }} context
+   * @param {{ race: string|null, subrace: string|null, roleGroups?: string[], roles?: string[] }} context
    * @returns {object[]}
    */
   #preferSpecificSets(matchingSets, context) {
-    const specificSets = matchingSets.filter(set => {
-      const setSubraces = set.tags.filter(t => {
-        const tagData = tag.get(t);
-        return tagData?.category === 'subrace';
-      });
-      return setSubraces.length > 0 && context.subrace;
-    });
+    const hasSubrace = set => Boolean(context.subrace && set.tags.includes(context.subrace));
+    const hasRace = set => Boolean(context.race && set.tags.includes(context.race));
+    const hasRole = set => Boolean(context.roles?.length && context.roles.some(r => set.tags.includes(r)));
+    const hasRoleGroup = set => Boolean(context.roleGroups?.length && context.roleGroups.some(g => set.tags.includes(g)));
 
-    return specificSets.length > 0 ? specificSets : matchingSets;
+    const tiers = [
+      set => hasSubrace(set) && hasRole(set),
+      set => hasRace(set) && hasRole(set),
+      set => hasSubrace(set) && hasRoleGroup(set),
+      set => hasRole(set),
+      set => hasRace(set) && hasRoleGroup(set),
+      set => hasRoleGroup(set),
+      set => hasSubrace(set),
+      set => hasRace(set),
+    ];
+
+    for (const predicate of tiers) {
+      const subset = matchingSets.filter(predicate);
+      if (subset.length > 0) return subset;
+    }
+
+    return matchingSets;
   }
 
   /** Populate `#nameMeta` and `#namesBySetId` from enabled sources. */
@@ -305,6 +405,8 @@ class NameGeneratorService {
     if (nameData.genders?.length) tags.push(...nameData.genders);
     if (nameData.races?.length) tags.push(...nameData.races);
     if (nameData.subraces?.length) tags.push(...nameData.subraces);
+    if (nameData.roleGroups?.length) tags.push(...nameData.roleGroups);
+    if (nameData.roles?.length) tags.push(...nameData.roles);
     return tags;
   }
 
@@ -316,7 +418,15 @@ class NameGeneratorService {
       const type = set.type ?? 'firstName';
       this.#tagCounts.set(type, (this.#tagCounts.get(type) ?? 0) + 1);
 
+      const countedIds = new Set(set.tags);
       for (const t of set.tags) {
+        const tagData = tag.get(t);
+        if (tagData?.category === 'role' && tagData.roleGroupId) {
+          countedIds.add(tagData.roleGroupId);
+        }
+      }
+
+      for (const t of countedIds) {
         this.#tagCounts.set(t, (this.#tagCounts.get(t) ?? 0) + 1);
       }
     }

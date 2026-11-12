@@ -1,4 +1,4 @@
-/**
+**
  * @fileoverview Module id, asset paths, Foundry flag keys, and default image shape.
  */
 
@@ -17,9 +17,12 @@ export const FLAGS = Object.freeze({
   IMAGE_DATA: 'imageData',
   TOKEN_CRITERIA: 'tokenCriteria',
   PREV_FORM_VALUES: 'prevFormValues',
+  LOCAL_OVERRIDE: 'localOverride',
   NAME_DATA: 'nameData',
   TAG_DATA: 'tagData',
   IS_DATA_SOURCE: 'isDataSource',
+  TOKEN_ROLLED: 'tokenRolled',
+  ROLLED_IMAGE_UUID: 'rolledImageUuid',
 });
 
 export const PACKS = Object.freeze({
@@ -37,6 +40,6 @@ export const DEFAULT_IMAGE_DATA = Object.freeze({
   tokenUrl: '',
   portraitUrl: '',
   scale: 1,
-  tags: [],
+  tags: Object.freeze([]),
   dynamicRing: true,
 });

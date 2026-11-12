@@ -1,9 +1,9 @@
-/**
+**
  * @fileoverview Journal page editor for IMAGE_DATA, NAME_DATA, and TAG_DATA flags.
  */
 
 import { MODULE_ID, FLAGS, DEFAULT_IMAGE_DATA, PATHS } from '../../constants/index.mjs';
-import { TAG_CATEGORY, isBuiltinTag } from '../../constants/tags.mjs';
+import { TAG_CATEGORY, GENDER_TAGS, isBuiltinTag } from '../../constants/tags.mjs';
 import { NAME_TYPE, NAME_TYPES } from '../../constants/ui.mjs';
 import { logger, getFlag } from '../../utils/index.mjs';
 import { browseImage, derivePortraitUrl } from '../../utils/filepicker.mjs';
@@ -103,6 +103,9 @@ export class Editor extends BaseFormApplication {
   #selectedGenders = [];
   #selectedRaces = [];
   #selectedSubraces = [];
+  #selectedRoleGroups = [];
+  #selectedRoles = [];
+  #extraNameTags = [];
   #localeSets = [];
 
   // tag mode state
@@ -110,6 +113,9 @@ export class Editor extends BaseFormApplication {
   #tagLabel = '';
   #tagCategory = TAG_CATEGORY.RACE;
   #parentRaceId = '';
+  #roleGroupId = '';
+  #tagWeight = 1;
+  #expandedRoleGroups = new Set();
 
   constructor(options = {}) {
     super();
@@ -171,7 +177,7 @@ export class Editor extends BaseFormApplication {
       resolve(false);
     };
 
-    app.render(true);
+    app.render({ force: true });
     return promise;
   }
 
@@ -212,7 +218,7 @@ export class Editor extends BaseFormApplication {
       isNameMode: this.#mode === MODE.NAME,
       isTagMode: this.#mode === MODE.TAG,
       buttons: [
-        { type: 'submit', icon: 'fa-solid fa-save', label: 'Save' },
+        { type: 'submit', icon: 'fa-solid fa-save', label: 'cs-hero-box.common.save' },
       ],
     };
 
@@ -245,7 +251,7 @@ export class Editor extends BaseFormApplication {
       }
     } catch (error) {
       logger.error('Failed to save:', error);
-      ui.notifications.error('Failed to save changes');
+      ui.notifications.error(game.i18n.localize('cs-hero-box.editor.saveError'));
       return;
     }
 
@@ -341,9 +347,69 @@ export class Editor extends BaseFormApplication {
       const nameData = getFlag(this.#page, FLAGS.NAME_DATA);
       this.#name = this.#page.name ?? '';
       this.#nameType = nameData?.type ?? NAME_TYPE.FIRST_NAME;
-      this.#selectedGenders = nameData?.genders ?? [];
-      this.#selectedRaces = nameData?.races ?? [];
-      this.#selectedSubraces = nameData?.subraces ?? [];
+
+      const hasExplicitGroups = Boolean(
+        nameData?.genders?.length
+        || nameData?.races?.length
+        || nameData?.subraces?.length
+        || nameData?.roleGroups?.length
+        || nameData?.roles?.length
+      );
+
+      if (hasExplicitGroups) {
+        this.#selectedGenders = [...(nameData?.genders ?? [])];
+        this.#selectedRaces = [...(nameData?.races ?? [])];
+        this.#selectedSubraces = [...(nameData?.subraces ?? [])];
+        this.#selectedRoleGroups = [...(nameData?.roleGroups ?? [])];
+        this.#selectedRoles = [...(nameData?.roles ?? [])];
+        const known = new Set([
+          ...this.#selectedGenders,
+          ...this.#selectedRaces,
+          ...this.#selectedSubraces,
+          ...this.#selectedRoleGroups,
+          ...this.#selectedRoles,
+        ]);
+        this.#extraNameTags = (nameData?.tags ?? []).filter(t => !known.has(t));
+      } else if (Array.isArray(nameData?.tags) && nameData.tags.length > 0) {
+        const genderIds = new Set(Object.values(GENDER_TAGS));
+        const raceIds = new Set(tag.getRaces().map(t => t.id));
+        const roleGroupIds = new Set(tag.getRoleGroups().map(t => t.id));
+        const roleIds = new Set(tag.getRoles().map(t => t.id));
+        this.#selectedGenders = [];
+        this.#selectedRaces = [];
+        this.#selectedSubraces = [];
+        this.#selectedRoleGroups = [];
+        this.#selectedRoles = [];
+        this.#extraNameTags = [];
+
+        for (const t of nameData.tags) {
+          if (genderIds.has(t)) {
+            this.#selectedGenders.push(t);
+          } else if (raceIds.has(t)) {
+            this.#selectedRaces.push(t);
+          } else if (roleGroupIds.has(t)) {
+            this.#selectedRoleGroups.push(t);
+          } else if (roleIds.has(t)) {
+            this.#selectedRoles.push(t);
+          } else if (tag.get(t)?.category === TAG_CATEGORY.SUBRACE) {
+            this.#selectedSubraces.push(t);
+            const parentRaceId = tag.get(t)?.parentRaceId;
+            if (parentRaceId && !this.#selectedRaces.includes(parentRaceId)) {
+              this.#selectedRaces.push(parentRaceId);
+            }
+          } else {
+            this.#extraNameTags.push(t);
+          }
+        }
+      } else {
+        this.#selectedGenders = [];
+        this.#selectedRaces = [];
+        this.#selectedSubraces = [];
+        this.#selectedRoleGroups = [];
+        this.#selectedRoles = [];
+        this.#extraNameTags = [];
+      }
+
       if (nameData?.names) {
         this.#localeSets = Object.entries(nameData.names).map(([locale, names]) => ({
           locale,
@@ -364,6 +430,9 @@ export class Editor extends BaseFormApplication {
       this.#tagLabel = tagData?.label ?? '';
       this.#tagCategory = tagData?.category ?? TAG_CATEGORY.RACE;
       this.#parentRaceId = tagData?.parentRaceId ?? '';
+      this.#roleGroupId = tagData?.roleGroupId ?? '';
+      const rawWeight = Number(tagData?.weight);
+      this.#tagWeight = Number.isFinite(rawWeight) && rawWeight > 0 ? rawWeight : 1;
     }
   }
 
@@ -382,7 +451,7 @@ export class Editor extends BaseFormApplication {
       genderTags: this.#mapTagsWithSelection(tag.getGenders()),
       ageTags: this.#mapTagsWithSelection(tag.getAges()),
       raceTags: this.#buildRaceTagsWithSelection(),
-      roleTags: this.#mapTagsWithSelection(tag.getRoles()),
+      roleTags: this.#buildRoleTagsWithSelection(),
       otherTags: this.#mapTagsWithSelection(tag.getOther()),
       customTags,
       selectedTagsDisplay: Array.from(this.#selectedTags).map(t => tag.getLabel(t)).join(', '),
@@ -410,6 +479,7 @@ export class Editor extends BaseFormApplication {
         isSelected: this.#selectedGenders.includes(t.id),
       })),
       raceTags: this.#buildRaceTagsForName(),
+      roleTags: this.#buildRoleTagsForName(),
       localeSets: this.#localeSets.map((set, index) => ({
         ...set,
         index,
@@ -436,7 +506,14 @@ export class Editor extends BaseFormApplication {
         label: tag.getLabel(t.id),
         isSelected: this.#parentRaceId === t.id,
       })),
+      roleGroups: tag.getRoleGroups().map(t => ({
+        value: t.id,
+        label: tag.getLabel(t.id),
+        isSelected: this.#roleGroupId === t.id,
+      })),
+      tagWeight: this.#tagWeight,
       showParentRace: this.#tagCategory === TAG_CATEGORY.SUBRACE,
+      showRoleGroup: this.#tagCategory === TAG_CATEGORY.ROLE,
     };
   }
 
@@ -525,6 +602,10 @@ export class Editor extends BaseFormApplication {
       .filter(([_, checked]) => checked).map(([id]) => id);
     const selectedSubraces = Object.entries(data.subrace ?? {})
       .filter(([_, checked]) => checked).map(([id]) => id);
+    const selectedRoleGroups = Object.entries(data.roleGroup ?? {})
+      .filter(([_, checked]) => checked).map(([id]) => id);
+    const selectedRoles = Object.entries(data.role ?? {})
+      .filter(([_, checked]) => checked).map(([id]) => id);
 
     // parse locale sets into the names object
     const names = {};
@@ -539,13 +620,26 @@ export class Editor extends BaseFormApplication {
       }
     }
 
+    const combinedTags = this.#extraNameTags.length > 0
+      ? [...new Set([
+          ...selectedGenders,
+          ...selectedRaces,
+          ...selectedSubraces,
+          ...selectedRoleGroups,
+          ...selectedRoles,
+          ...this.#extraNameTags,
+        ])]
+      : null;
+
     const nameData = {
       type: data.type,
       genders: selectedGenders,
       races: selectedRaces,
       subraces: selectedSubraces,
+      roleGroups: selectedRoleGroups,
+      roles: selectedRoles,
       names,
-      tags: null,
+      tags: combinedTags,
     };
 
     const pageName = data.name?.trim() || this.#page?.name || `NameSet-${foundry.utils.randomID(6)}`;
@@ -605,9 +699,15 @@ export class Editor extends BaseFormApplication {
     const category = formData.object.category ?? TAG_CATEGORY.RACE;
     const parentRaceId = category === TAG_CATEGORY.SUBRACE
       ? (formData.object.parentRaceId || null) : null;
+    const roleGroupId = category === TAG_CATEGORY.ROLE
+      ? (formData.object.roleGroupId || null) : null;
+    const parsedWeight = Number(formData.object.weight);
+    const weight = category === TAG_CATEGORY.ROLE && Number.isFinite(parsedWeight) && parsedWeight > 0
+      ? Math.round(parsedWeight * 100) / 100
+      : 1;
     const label = formData.object.label?.trim() || identifier;
 
-    const tagData = { id: identifier, category, parentRaceId, label };
+    const tagData = { id: identifier, category, parentRaceId, roleGroupId, weight, label };
 
     try {
       if (this.#page) {
@@ -665,19 +765,30 @@ export class Editor extends BaseFormApplication {
       }
     }
 
-    // show/hide parent race field when category changes
+    // show/hide parent race / role group / weight fields when category changes
     if (this.#mode === MODE.TAG) {
       const categorySelect = this.querySelector('select[name="category"]');
       const parentRaceGroup = this.querySelector('.cs-hero-box-editor__parent-race');
-      if (categorySelect && parentRaceGroup) {
+      const roleGroupField = this.querySelector('.cs-hero-box-editor__role-group');
+      const roleWeightField = this.querySelector('.cs-hero-box-editor__role-weight');
+      if (categorySelect) {
         this.addEvent(categorySelect, 'change', (e) => {
-          parentRaceGroup.style.display = e.target.value === TAG_CATEGORY.SUBRACE ? '' : 'none';
+          const isRole = e.target.value === TAG_CATEGORY.ROLE;
+          if (parentRaceGroup) {
+            parentRaceGroup.style.display = e.target.value === TAG_CATEGORY.SUBRACE ? '' : 'none';
+          }
+          if (roleGroupField) {
+            roleGroupField.style.display = isRole ? '' : 'none';
+          }
+          if (roleWeightField) {
+            roleWeightField.style.display = isRole ? '' : 'none';
+          }
         });
       }
     }
   }
 
-  // toggle subrace visibility when race checkboxes change
+  // toggle subrace and role-group visibility in image/name modes
   #bindRaceCheckboxes() {
     if (this.#mode !== MODE.IMAGE && this.#mode !== MODE.NAME) return;
 
@@ -693,6 +804,37 @@ export class Editor extends BaseFormApplication {
         }
       });
     }
+
+    for (const toggleBtn of this.querySelectorAll('[data-role-group-toggle]')) {
+      this.addEvent(toggleBtn, 'click', (e) => {
+        e.preventDefault();
+        const groupId = toggleBtn.dataset.roleGroupToggle;
+        const container = this.querySelector(`[data-role-group-container="${groupId}"]`);
+        if (!container) return;
+
+        const isNowOpen = container.style.display === 'none';
+        container.style.display = isNowOpen ? '' : 'none';
+        toggleBtn.classList.toggle('expanded', isNowOpen);
+        if (isNowOpen) {
+          this.#expandedRoleGroups.add(groupId);
+        } else {
+          this.#expandedRoleGroups.delete(groupId);
+        }
+      });
+    }
+
+    for (const checkbox of this.querySelectorAll('input[data-role-group-id]')) {
+      this.addEvent(checkbox, 'change', (e) => {
+        const groupId = e.target.dataset.roleGroupId;
+        const container = this.querySelector(`[data-role-group-container="${groupId}"]`);
+        const toggleBtn = this.querySelector(`[data-role-group-toggle="${groupId}"]`);
+        if (e.target.checked && container) {
+          container.style.display = '';
+          toggleBtn?.classList.add('expanded');
+          this.#expandedRoleGroups.add(groupId);
+        }
+      });
+    }
   }
 
   // read current values from name form inputs before re-render
@@ -704,6 +846,26 @@ export class Editor extends BaseFormApplication {
 
     const typeSelect = this.querySelector('select[name="type"]');
     if (typeSelect) this.#nameType = typeSelect.value;
+
+    this.#selectedGenders = Array.from(this.querySelectorAll('input[type="checkbox"][name^="gender."]'))
+      .filter(cb => cb.checked)
+      .map(cb => cb.name.replace('gender.', ''));
+
+    this.#selectedRaces = Array.from(this.querySelectorAll('input[type="checkbox"][name^="race."]'))
+      .filter(cb => cb.checked)
+      .map(cb => cb.name.replace('race.', ''));
+
+    this.#selectedSubraces = Array.from(this.querySelectorAll('input[type="checkbox"][name^="subrace."]'))
+      .filter(cb => cb.checked)
+      .map(cb => cb.name.replace('subrace.', ''));
+
+    this.#selectedRoleGroups = Array.from(this.querySelectorAll('input[type="checkbox"][name^="roleGroup."]'))
+      .filter(cb => cb.checked)
+      .map(cb => cb.name.replace('roleGroup.', ''));
+
+    this.#selectedRoles = Array.from(this.querySelectorAll('input[type="checkbox"][name^="role."]'))
+      .filter(cb => cb.checked)
+      .map(cb => cb.name.replace('role.', ''));
 
     this.#localeSets = [];
     let index = 0;
@@ -735,6 +897,7 @@ export class Editor extends BaseFormApplication {
 
     addTags(tag.getGenders());
     addTags(tag.getAges());
+    addTags(tag.getRoleGroups());
     addTags(tag.getRoles());
     addTags(tag.getOther());
 
@@ -776,6 +939,49 @@ export class Editor extends BaseFormApplication {
     });
   }
 
+  // build role groups + ungrouped roles for image mode
+  #buildRoleTagsWithSelection() {
+    const groupEntries = tag.getRoleGroups()
+      .map(groupTag => {
+        const roles = tag.getRoles(groupTag.id)
+          .map(r => ({
+            id: r.id,
+            label: tag.getLabel(r.id),
+            isSelected: this.#selectedTags.has(r.id),
+          }))
+          .sort((a, b) => a.label.localeCompare(b.label));
+
+        const isSelected = this.#selectedTags.has(groupTag.id);
+        const hasSelectedChild = roles.some(r => r.isSelected);
+        const hasRoles = roles.length > 0;
+
+        return {
+          id: groupTag.id,
+          label: tag.getLabel(groupTag.id),
+          isRoleGroup: true,
+          isSelected,
+          hasRoles,
+          showRoles: hasRoles && (isSelected || hasSelectedChild || this.#expandedRoleGroups.has(groupTag.id)),
+          roles,
+        };
+      })
+      .sort((a, b) => a.label.localeCompare(b.label));
+
+    const ungroupedEntries = tag.getUngroupedRoles()
+      .map(roleTag => ({
+        id: roleTag.id,
+        label: tag.getLabel(roleTag.id),
+        isRoleGroup: false,
+        isSelected: this.#selectedTags.has(roleTag.id),
+        hasRoles: false,
+        showRoles: false,
+        roles: [],
+      }))
+      .sort((a, b) => a.label.localeCompare(b.label));
+
+    return [...groupEntries, ...ungroupedEntries];
+  }
+
   // build race tags with nested subraces for name mode
   #buildRaceTagsForName() {
     return tag.getRaces().map(t => {
@@ -795,5 +1001,48 @@ export class Editor extends BaseFormApplication {
         })),
       };
     });
+  }
+
+  // build role groups + ungrouped roles for name mode
+  #buildRoleTagsForName() {
+    const groupEntries = tag.getRoleGroups()
+      .map(groupTag => {
+        const roles = tag.getRoles(groupTag.id)
+          .map(r => ({
+            id: r.id,
+            label: tag.getLabel(r.id),
+            isSelected: this.#selectedRoles.includes(r.id),
+          }))
+          .sort((a, b) => a.label.localeCompare(b.label));
+
+        const isSelected = this.#selectedRoleGroups.includes(groupTag.id);
+        const hasSelectedChild = roles.some(r => r.isSelected);
+        const hasRoles = roles.length > 0;
+
+        return {
+          id: groupTag.id,
+          label: tag.getLabel(groupTag.id),
+          isRoleGroup: true,
+          isSelected,
+          hasRoles,
+          showRoles: hasRoles && (isSelected || hasSelectedChild || this.#expandedRoleGroups.has(groupTag.id)),
+          roles,
+        };
+      })
+      .sort((a, b) => a.label.localeCompare(b.label));
+
+    const ungroupedEntries = tag.getUngroupedRoles()
+      .map(roleTag => ({
+        id: roleTag.id,
+        label: tag.getLabel(roleTag.id),
+        isRoleGroup: false,
+        isSelected: this.#selectedRoles.includes(roleTag.id),
+        hasRoles: false,
+        showRoles: false,
+        roles: [],
+      }))
+      .sort((a, b) => a.label.localeCompare(b.label));
+
+    return [...groupEntries, ...ungroupedEntries];
   }
 }

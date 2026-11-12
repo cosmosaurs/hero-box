@@ -1,4 +1,4 @@
-/**
+**
  * @fileoverview Optional Web Worker bridge for large image-list filter/search in the data manager.
  */
 
@@ -6,13 +6,16 @@ import { logger } from './logger.mjs';
 
 const WORKER_THRESHOLD = 2000;
 
-/** Spawns an inline worker for tag/text filtering when item count exceeds threshold. */
+/** Spawns an inline worker with cached dataset when item count exceeds threshold. */
 class FilterWorkerBridge {
   #worker = null;
+  #blobUrl = null;
   #pendingResolve = null;
   #pendingReject = null;
   #requestId = 0;
   #available = false;
+  #cachedItemsRef = null;
+  #cachedItemsLength = -1;
 
   /** True when worker was successfully created for large lists. */
   get shouldUseWorker() {
@@ -36,43 +39,52 @@ class FilterWorkerBridge {
 
     try {
       const workerCode = `
+        let dataset = [];
+
         self.onmessage = function(e) {
           const { id, type, items, tagGroups, searchQuery } = e.data;
 
-          let result = items;
+          if (type === 'setItems') {
+            dataset = Array.isArray(items) ? items : [];
+            return;
+          }
 
-          if (type === 'filter' || type === 'both') {
-            if (tagGroups) {
-              const activeGroups = Object.entries(tagGroups).filter(([_, tags]) => tags && tags.length > 0);
-              if (activeGroups.length > 0) {
-                result = result.filter(item => {
-                  const itemTags = new Set(item.tags);
-                  return activeGroups.every(([_, groupTags]) =>
-                    groupTags.some(t => itemTags.has(t))
-                  );
-                });
-              }
+          let result = dataset;
+
+          if (tagGroups) {
+            const activeGroups = Object.entries(tagGroups).filter(([_, tags]) => tags && tags.length > 0);
+            if (activeGroups.length > 0) {
+              result = result.filter(item => {
+                const itemTags = new Set(item.tags);
+                return activeGroups.every(([_, groupTags]) =>
+                  groupTags.some(t => itemTags.has(t))
+                );
+              });
             }
           }
 
-          if (type === 'search' || type === 'both') {
-            if (searchQuery) {
-              result = result.filter(item => item.searchString.includes(searchQuery));
-            }
+          if (searchQuery) {
+            result = result.filter(item => item.searchString.includes(searchQuery));
           }
 
-          self.postMessage({ id, result });
+          const uuids = result.map(item => item.uuid);
+          self.postMessage({ id, uuids });
         };
+
+        self.postMessage({ type: 'ready' });
       `;
 
       const blob = new Blob([workerCode], { type: 'application/javascript' });
-      const url = URL.createObjectURL(blob);
-      this.#worker = new Worker(url);
-      URL.revokeObjectURL(url);
+      this.#blobUrl = URL.createObjectURL(blob);
+      this.#worker = new Worker(this.#blobUrl);
 
       this.#worker.onmessage = (e) => {
+        if (e.data?.type === 'ready') {
+          this.#revokeBlobUrl();
+          return;
+        }
         if (this.#pendingResolve && e.data.id === this.#requestId) {
-          this.#pendingResolve(e.data.result);
+          this.#pendingResolve(e.data.uuids);
           this.#pendingResolve = null;
           this.#pendingReject = null;
         }
@@ -97,6 +109,9 @@ class FilterWorkerBridge {
   }
 
   /**
+   * @param {object[]} items
+   * @param {Record<string, string[]>|null} tagGroups
+   * @param {string} searchQuery
    * @returns {Promise<object[]|null>} Full items matching worker result, or null to use main-thread path.
    */
   async filter(items, tagGroups, searchQuery) {
@@ -104,15 +119,16 @@ class FilterWorkerBridge {
       return null;
     }
 
-    const transferItems = items.map(item => ({
-      uuid: item.uuid,
-      tags: item.tags,
-      searchString: item.searchString,
-    }));
-
-    let type = 'both';
-    if (!tagGroups && searchQuery) type = 'search';
-    else if (tagGroups && !searchQuery) type = 'filter';
+    if (items !== this.#cachedItemsRef || items.length !== this.#cachedItemsLength) {
+      const transferItems = items.map(item => ({
+        uuid: item.uuid,
+        tags: item.tags,
+        searchString: item.searchString,
+      }));
+      this.#worker.postMessage({ type: 'setItems', items: transferItems });
+      this.#cachedItemsRef = items;
+      this.#cachedItemsLength = items.length;
+    }
 
     this.#requestId++;
     const id = this.#requestId;
@@ -122,17 +138,27 @@ class FilterWorkerBridge {
         this.#pendingReject(new Error('Superseded'));
       }
 
-      this.#pendingResolve = (resultItems) => {
-        const uuidSet = new Set(resultItems.map(r => r.uuid));
+      this.#pendingResolve = (uuids) => {
+        const uuidSet = new Set(uuids);
         resolve(items.filter(item => uuidSet.has(item.uuid)));
       };
       this.#pendingReject = reject;
 
-      this.#worker.postMessage({ id, type, items: transferItems, tagGroups, searchQuery });
+      this.#worker.postMessage({ id, type: 'query', tagGroups, searchQuery });
     });
   }
 
+  #revokeBlobUrl() {
+    if (this.#blobUrl) {
+      try {
+        URL.revokeObjectURL(this.#blobUrl);
+      } catch {}
+      this.#blobUrl = null;
+    }
+  }
+
   destroy() {
+    this.#revokeBlobUrl();
     if (this.#worker) {
       try {
         this.#worker.terminate();
@@ -140,6 +166,8 @@ class FilterWorkerBridge {
       this.#worker = null;
     }
     this.#available = false;
+    this.#cachedItemsRef = null;
+    this.#cachedItemsLength = -1;
     if (this.#pendingReject) {
       try {
         this.#pendingReject(new Error('Worker destroyed'));

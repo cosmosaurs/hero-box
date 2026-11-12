@@ -1,11 +1,11 @@
-/**
+**
  * @fileoverview Hero Box actor wizard: random vs fixed token, tag or explicit image selection.
  */
 
 import { MODULE_ID, FLAGS, TOKEN_MODE, SELECTION_MODE, PATHS, SETTINGS } from '../../constants/index.mjs';
-import { GENDER_TAGS, AGE_TAGS } from '../../constants/tags.mjs';
-import { logger, getFlag } from '../../utils/index.mjs';
-import { tag, imagePicker } from '../../services/index.mjs';
+import { AGE_TAGS } from '../../constants/tags.mjs';
+import { logger } from '../../utils/index.mjs';
+import { tag, imagePicker, actor as actorService } from '../../services/index.mjs';
 import { getSetting, setSetting } from '../../settings.mjs';
 import { BaseFormApplication } from '../base/base.mjs';
 
@@ -55,6 +55,7 @@ export class ActorConfig extends BaseFormApplication {
   #dragDrop = [];
   #raceTags = [];
   #roleTags = [];
+  #roleGroupExpandOverrides = new Map();
   #selectionMode = SELECTION_MODE.TAG;
   #selectedImages = [];
   #initPromise = null;
@@ -100,7 +101,7 @@ export class ActorConfig extends BaseFormApplication {
       resolve(app.#result);
     };
 
-    app.render(true);
+    app.render({ force: true });
     return promise;
   }
 
@@ -115,6 +116,7 @@ export class ActorConfig extends BaseFormApplication {
   /** @returns {Promise<void>} */
   async close(options = {}) {
     this.#formState = this.#getInitialFormState();
+    this.#roleGroupExpandOverrides.clear();
     this.#selectionMode = SELECTION_MODE.TAG;
     this.#selectedImages = [];
     return super.close(options);
@@ -125,12 +127,37 @@ export class ActorConfig extends BaseFormApplication {
     super._onRender(context, options);
     this.#dragDrop.forEach(d => d.bind(this.element));
     this.#bindTriStateChips();
+    this.#bindRoleGroupExpandButtons();
     this.#bindDropZoneEvents();
     this.#bindNicknameSliders();
     this.#bindRaceSearch();
     this.#bindAccordions();
     this.#bindGenderButtons();
     this.#bindModeButtons();
+  }
+
+  #shouldShowRoleGroupChildren(groupId, groupState, hasChildSelection) {
+    if (this.#roleGroupExpandOverrides.has(groupId)) {
+      return this.#roleGroupExpandOverrides.get(groupId);
+    }
+    return groupState === 'include' || hasChildSelection;
+  }
+
+  #bindRoleGroupExpandButtons() {
+    for (const btn of this.querySelectorAll('[data-role-group-expand]')) {
+      this.addEvent(btn, 'click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        const groupId = btn.dataset.roleGroupExpand;
+        const container = this.querySelector(`[data-role-group-parent="${groupId}"]`);
+        if (!container) return;
+
+        const isNowOpen = container.style.display === 'none';
+        container.style.display = isNowOpen ? '' : 'none';
+        btn.classList.toggle('expanded', isNowOpen);
+        this.#roleGroupExpandOverrides.set(groupId, isNowOpen);
+      });
+    }
   }
 
   /** CSS `dragover` class on the source-actor drop zone. */
@@ -233,60 +260,99 @@ export class ActorConfig extends BaseFormApplication {
   }
 
   #bindRaceSearch() {
-    const searchInput = this.querySelector('.cs-hero-box-form__race-search');
+    this.#bindHierarchySearch({
+      sectionId: 'race',
+      stateKey: 'raceSearchQuery',
+      parentSelector: '.cs-hero-box-form__tri-chip--race',
+      childSelector: '.cs-hero-box-form__tri-chip--subrace',
+    });
+    this.#bindHierarchySearch({
+      sectionId: 'role',
+      stateKey: 'roleSearchQuery',
+      parentSelector: '.cs-hero-box-form__tri-chip--race',
+      childSelector: '.cs-hero-box-form__tri-chip--subrace',
+    });
+  }
+
+  #bindHierarchySearch({ sectionId, stateKey, parentSelector, childSelector }) {
+    const section = this.querySelector(`[data-section-id="${sectionId}"]`);
+    const searchInput = section?.querySelector('.cs-hero-box-form__race-search');
     if (!searchInput) return;
 
-    this.addEvent(searchInput, 'input', (e) => {
-      const query = e.target.value.toLowerCase().trim();
-      this.#formState.raceSearchQuery = query;
-      const raceItems = this.querySelectorAll('.cs-hero-box-form__race-item');
+    const applyFilter = (rawQuery) => {
+      const query = (rawQuery ?? '').toLowerCase().trim();
+      this.#formState[stateKey] = query;
+      const items = section.querySelectorAll('.cs-hero-box-form__race-item');
 
-      for (const item of raceItems) {
-        const raceLabel = item.querySelector('.cs-hero-box-form__checkbox span')?.textContent?.toLowerCase() ?? '';
-        const subraceContainer = item.querySelector('.cs-hero-box-form__subraces');
-        let subraceMatch = false;
-        let matchingSubraceCount = 0;
+      for (const item of items) {
+        const parentChip = item.querySelector(parentSelector);
+        const parentLabel = parentChip?.textContent?.toLowerCase() ?? '';
+        const childContainer = item.querySelector('.cs-hero-box-form__subraces');
+        let childMatch = false;
+        let hasActiveChild = false;
 
-        if (subraceContainer) {
-          const subraceLabels = subraceContainer.querySelectorAll('.cs-hero-box-form__checkbox--subrace');
-          for (const subraceEl of subraceLabels) {
-            const subraceText = subraceEl.querySelector('span')?.textContent?.toLowerCase() ?? '';
-            if (query && subraceText.includes(query)) {
-              subraceMatch = true;
-              matchingSubraceCount++;
-              subraceEl.style.display = '';
+        if (childContainer) {
+          const childChips = childContainer.querySelectorAll(childSelector);
+          for (const childEl of childChips) {
+            if (childEl.dataset.state && childEl.dataset.state !== 'none') {
+              hasActiveChild = true;
+            }
+            const childText = childEl.textContent?.toLowerCase() ?? '';
+            if (query && childText.includes(query)) {
+              childMatch = true;
+              childEl.style.display = '';
             } else if (query) {
-              subraceEl.style.display = 'none';
+              childEl.style.display = 'none';
             } else {
-              subraceEl.style.display = '';
+              childEl.style.display = '';
             }
           }
         }
 
-        const raceMatch = raceLabel.includes(query) || !query;
+        const parentMatch = !query || parentLabel.includes(query);
+        const expandBtn = item.querySelector('.cs-hero-box-form__group-expand-btn');
+        const groupId = parentChip?.dataset?.group === 'roleGroup' ? parentChip.dataset.tagId : null;
+        const shouldExpandDefault = groupId
+          ? this.#shouldShowRoleGroupChildren(groupId, parentChip?.dataset.state ?? 'none', hasActiveChild)
+          : (parentChip?.dataset.state === 'include' || hasActiveChild);
 
-        if (raceMatch || subraceMatch) {
+        if (parentMatch || childMatch) {
           item.style.display = '';
-          if (subraceContainer) {
-            if (subraceMatch && !raceMatch) {
-              subraceContainer.style.display = '';
-            } else if (!query) {
-              const raceCheckbox = item.querySelector('input[data-race-id]');
-              if (raceCheckbox && !raceCheckbox.checked) {
-                subraceContainer.style.display = 'none';
+          if (childContainer) {
+            let isExpanded = false;
+            if (query) {
+              if (childMatch) {
+                childContainer.style.display = '';
+                isExpanded = true;
               } else {
-                subraceContainer.style.display = '';
+                childContainer.style.display = shouldExpandDefault ? '' : 'none';
+                isExpanded = shouldExpandDefault;
+                if (shouldExpandDefault) {
+                  childContainer.querySelectorAll(childSelector).forEach(el => {
+                    el.style.display = '';
+                  });
+                }
               }
-              subraceContainer.querySelectorAll('.cs-hero-box-form__checkbox--subrace').forEach(el => {
+            } else {
+              childContainer.style.display = shouldExpandDefault ? '' : 'none';
+              isExpanded = shouldExpandDefault;
+              childContainer.querySelectorAll(childSelector).forEach(el => {
                 el.style.display = '';
               });
             }
+            expandBtn?.classList.toggle('expanded', isExpanded);
           }
         } else {
           item.style.display = 'none';
         }
       }
-    });
+    };
+
+    if (this.#formState[stateKey]) {
+      applyFilter(this.#formState[stateKey]);
+    }
+
+    this.addEvent(searchInput, 'input', (e) => applyFilter(e.target.value));
   }
 
   /** @returns {Promise<object>} */
@@ -329,10 +395,6 @@ export class ActorConfig extends BaseFormApplication {
     const otherTagsList = tag.getOther().filter(t => (tagCounts.get(t.id) ?? 0) > 0);
 
     const selectedGender = state.gender.length === 1 ? state.gender[0] : 'any';
-    let selectedGenderLabel = '';
-    if (selectedGender !== 'any') {
-      selectedGenderLabel = tag.getLabel(selectedGender);
-    }
 
     const genderOptions = [
       { value: 'm', label: tag.getLabel('m'), isSelected: selectedGender === 'm' },
@@ -348,13 +410,51 @@ export class ActorConfig extends BaseFormApplication {
       tagState: this.#getTagState(id, state.age, state.ageExclude),
     }));
 
-    const roleTagsFiltered = this.#roleTags
-      .filter(t => (tagCounts.get(t.id) ?? 0) > 0)
-      .map(t => ({
-        id: t.id,
-        label: tag.getLabel(t.id),
-        tagState: this.#getTagState(t.id, state.role, state.roleExclude),
-      }));
+    const roleGroupItems = tag.getRoleGroups()
+      .map(g => {
+        const groupState = this.#getTagState(g.id, state.roleGroup, state.roleGroupExclude);
+        const roles = tag.getRoles(g.id)
+          .filter(r => (tagCounts.get(r.id) ?? 0) > 0)
+          .map(r => ({
+            id: r.id,
+            label: tag.getLabel(r.id),
+            tagState: this.#getTagState(r.id, state.role, state.roleExclude),
+          }))
+          .sort((a, b) => a.label.localeCompare(b.label));
+
+        if ((tagCounts.get(g.id) ?? 0) === 0 && roles.length === 0) {
+          return null;
+        }
+
+        const hasChildSelection = roles.some(r => r.tagState !== 'none');
+        const hasRoles = roles.length > 0;
+        return {
+          id: g.id,
+          label: tag.getLabel(g.id),
+          isRoleGroup: true,
+          tagState: groupState,
+          hasRoles,
+          showRoles: hasRoles && this.#shouldShowRoleGroupChildren(g.id, groupState, hasChildSelection),
+          roles,
+        };
+      })
+      .filter(Boolean)
+      .sort((a, b) => a.label.localeCompare(b.label));
+
+    const ungroupedRoleItems = tag.getUngroupedRoles()
+      .filter(r => (tagCounts.get(r.id) ?? 0) > 0)
+      .map(r => ({
+        id: r.id,
+        label: tag.getLabel(r.id),
+        isRoleGroup: false,
+        tagState: this.#getTagState(r.id, state.role, state.roleExclude),
+        hasRoles: false,
+        showRoles: false,
+        roles: [],
+      }))
+      .sort((a, b) => a.label.localeCompare(b.label));
+
+    const roleTagsFiltered = [...roleGroupItems, ...ungroupedRoleItems];
 
     const otherTagsMapped = otherTagsList.map(t => ({
       id: t.id,
@@ -366,9 +466,10 @@ export class ActorConfig extends BaseFormApplication {
     const selectedAgeCount = (state.age?.length ?? 0) + (state.ageExclude?.length ?? 0);
     const subraceIncludeCount = Object.values(state.subrace ?? {}).reduce((acc, arr) => acc + arr.length, 0);
     const subraceExcludeCount = state.subraceExclude?.length ?? 0;
+    const roleGroupCount = (state.roleGroup?.length ?? 0) + (state.roleGroupExclude?.length ?? 0);
 
     const hasRandomCriteria = this.#actor
-      ? !!getFlag(this.#actor, FLAGS.TOKEN_CRITERIA)
+      ? !!actorService.getEffectiveCriteria(this.#actor)
       : false;
 
     return {
@@ -377,15 +478,15 @@ export class ActorConfig extends BaseFormApplication {
       isImageMode,
       raceTags,
       raceSearchQuery: state.raceSearchQuery ?? '',
+      roleSearchQuery: state.roleSearchQuery ?? '',
       genderOptions,
       selectedGender,
-      selectedGenderLabel,
       ageTags,
       roleTags: roleTagsFiltered,
       otherTags: otherTagsMapped,
       selectedRaceCount: selectedRaceCount + subraceIncludeCount + subraceExcludeCount,
       selectedAgeCount,
-      selectedRoleCount: (state.role?.length ?? 0) + (state.roleExclude?.length ?? 0),
+      selectedRoleCount: roleGroupCount + (state.role?.length ?? 0) + (state.roleExclude?.length ?? 0),
       selectedOtherCount: (state.other?.length ?? 0) + (state.otherExclude?.length ?? 0),
       nicknameChance: state.nicknameChance ?? 50,
       nicknameOnlyChance: state.nicknameOnlyChance ?? 0,
@@ -497,7 +598,7 @@ export class ActorConfig extends BaseFormApplication {
   async #initializeFromActor() {
     if (!this.#actor) return;
 
-    const criteria = getFlag(this.#actor, FLAGS.TOKEN_CRITERIA);
+    const criteria = actorService.getEffectiveCriteria(this.#actor);
     if (!criteria) return;
 
     if (criteria.selectionMode === 'image') {
@@ -548,7 +649,6 @@ export class ActorConfig extends BaseFormApplication {
       const chipState = chip.dataset.state ?? 'none';
       if (!validSubraces.has(tagId)) continue;
 
-      const subraceParent = this.querySelector(`[data-subrace-parent]`)?.dataset?.subraceParent;
       const parentEl = chip.closest('[data-subrace-parent]');
       const parentRaceId = parentEl?.dataset?.subraceParent;
 
@@ -571,6 +671,15 @@ export class ActorConfig extends BaseFormApplication {
       const chipState = chip.dataset.state ?? 'none';
       if (chipState === 'include') state.age.push(tagId);
       else if (chipState === 'exclude') state.ageExclude.push(tagId);
+    }
+
+    state.roleGroup = [];
+    state.roleGroupExclude = [];
+    for (const chip of this.querySelectorAll('.cs-hero-box-form__tri-chip[data-group="roleGroup"]')) {
+      const tagId = chip.dataset.tagId;
+      const chipState = chip.dataset.state ?? 'none';
+      if (chipState === 'include') state.roleGroup.push(tagId);
+      else if (chipState === 'exclude') state.roleGroupExclude.push(tagId);
     }
 
     state.role = [];
@@ -602,19 +711,6 @@ export class ActorConfig extends BaseFormApplication {
     if (nlc) state.noLastNameChance = parseInt(nlc.value) || 0;
   }
 
-  /**
-   * @param {string} name
-   * @param {Record<string, string>} values
-   * @param {string[]} selectedValues
-   */
-  #buildCheckboxOptions(name, values, selectedValues) {
-    return Object.entries(values).map(([key, id]) => ({
-      id,
-      label: tag.getLabel(id),
-      isSelected: selectedValues.includes(id),
-    }));
-  }
-
   /** Populate `#raceTags` and `#roleTags` once. */
   #loadTagsIfNeeded() {
     if (!this.#raceTags.length) {
@@ -629,7 +725,7 @@ export class ActorConfig extends BaseFormApplication {
    */
   #getInitialFormState(reset = false) {
     if (this.#actor && !reset) {
-      const saved = getFlag(this.#actor, FLAGS.PREV_FORM_VALUES);
+      const saved = actorService.getEffectiveFormValues(this.#actor);
       if (saved) return this.#normalizeFormState(saved);
     }
 
@@ -650,6 +746,8 @@ export class ActorConfig extends BaseFormApplication {
       gender: [],
       age: [],
       ageExclude: [],
+      roleGroup: [],
+      roleGroupExclude: [],
       role: [],
       roleExclude: [],
       other: [],
@@ -657,6 +755,7 @@ export class ActorConfig extends BaseFormApplication {
       mode: TOKEN_MODE.RANDOM,
       sourceActor: null,
       raceSearchQuery: '',
+      roleSearchQuery: '',
       nicknameChance,
       nicknameOnlyChance,
       noLastNameChance,
@@ -673,6 +772,8 @@ export class ActorConfig extends BaseFormApplication {
       gender: saved.gender ?? [],
       age: saved.age ?? [],
       ageExclude: saved.ageExclude ?? [],
+      roleGroup: saved.roleGroup ?? [],
+      roleGroupExclude: saved.roleGroupExclude ?? [],
       role: saved.role ?? [],
       roleExclude: saved.roleExclude ?? [],
       other: saved.other ?? [],
@@ -680,6 +781,7 @@ export class ActorConfig extends BaseFormApplication {
       mode: saved.mode ?? TOKEN_MODE.RANDOM,
       sourceActor: saved.sourceActor ?? null,
       raceSearchQuery: saved.raceSearchQuery ?? '',
+      roleSearchQuery: saved.roleSearchQuery ?? '',
       nicknameChance: saved.nicknameChance ?? 50,
       nicknameOnlyChance: saved.nicknameOnlyChance ?? 0,
       noLastNameChance: saved.noLastNameChance ?? 0,
@@ -708,6 +810,8 @@ export class ActorConfig extends BaseFormApplication {
       gender: isImageMode ? [] : this.#formState.gender,
       age: isImageMode ? [] : this.#formState.age,
       ageExclude: isImageMode ? [] : (this.#formState.ageExclude ?? []),
+      roleGroup: isImageMode ? [] : (this.#formState.roleGroup ?? []),
+      roleGroupExclude: isImageMode ? [] : (this.#formState.roleGroupExclude ?? []),
       role: isImageMode ? [] : this.#formState.role,
       roleExclude: isImageMode ? [] : (this.#formState.roleExclude ?? []),
       other: isImageMode ? [] : (this.#formState.other ?? []),
@@ -723,8 +827,9 @@ export class ActorConfig extends BaseFormApplication {
 
   /** @returns {DragDrop[]} */
   #createDragDropHandlers() {
+    const DragDropImpl = foundry.applications?.ux?.DragDrop?.implementation ?? globalThis.DragDrop;
     return this.options.dragDrop.map(config => {
-      return new DragDrop({
+      return new DragDropImpl({
         ...config,
         permissions: { drop: () => true },
         callbacks: {
@@ -786,11 +891,6 @@ export class ActorConfig extends BaseFormApplication {
     }
   }
 
-  #getAccordionId(legend) {
-    const span = legend.querySelector('span');
-    return span?.textContent?.trim() ?? '';
-  }
-
   #saveAccordionState() {
     const expanded = [];
     const sections = this.querySelectorAll('.cs-hero-box-form__section:not(.cs-hero-box-form__section--static)');
@@ -802,15 +902,6 @@ export class ActorConfig extends BaseFormApplication {
     try {
       setSetting(SETTINGS.COLLAPSED_ACTOR_CONFIG, expanded);
     } catch {}
-  }
-
-  #bindAgeButtons() {
-  }
-
-  #bindChipToggles() {
-  }
-
-  #bindRaceChips() {
   }
 
   #getTagState(tagId, includeList, excludeList) {
@@ -883,6 +974,55 @@ export class ActorConfig extends BaseFormApplication {
           return;
         }
 
+        if (group === 'roleGroup') {
+          this.#formState.roleGroup = (this.#formState.roleGroup ?? []).filter(id => id !== tagId);
+          this.#formState.roleGroupExclude = (this.#formState.roleGroupExclude ?? []).filter(id => id !== tagId);
+          if (next === 'include') this.#formState.roleGroup.push(tagId);
+          else if (next === 'exclude') this.#formState.roleGroupExclude.push(tagId);
+
+          const roleGroupContainer = this.querySelector(`[data-role-group-parent="${tagId}"]`);
+          const expandBtn = this.querySelector(`[data-role-group-expand="${tagId}"]`);
+          if (roleGroupContainer) {
+            if (next === 'include') {
+              roleGroupContainer.style.display = '';
+              expandBtn?.classList.add('expanded');
+              this.#roleGroupExpandOverrides.set(tagId, true);
+            } else if (next === 'exclude') {
+              for (const sub of roleGroupContainer.querySelectorAll('.cs-hero-box-form__tri-chip')) {
+                if (sub.dataset.state === 'include') {
+                  sub.dataset.state = 'none';
+                  const subId = sub.dataset.tagId;
+                  this.#formState.role = (this.#formState.role ?? []).filter(id => id !== subId);
+                }
+              }
+              roleGroupContainer.style.display = 'none';
+              expandBtn?.classList.remove('expanded');
+              this.#roleGroupExpandOverrides.set(tagId, false);
+            } else {
+              const hasActiveChild = Array.from(roleGroupContainer.querySelectorAll('.cs-hero-box-form__tri-chip'))
+                .some(sub => sub.dataset.state && sub.dataset.state !== 'none');
+              if (!hasActiveChild) {
+                roleGroupContainer.style.display = 'none';
+                expandBtn?.classList.remove('expanded');
+                this.#roleGroupExpandOverrides.delete(tagId);
+              }
+            }
+          }
+
+          this.#updateBadge('role');
+          return;
+        }
+
+        if (group === 'role') {
+          this.#formState.role = (this.#formState.role ?? []).filter(id => id !== tagId);
+          this.#formState.roleExclude = (this.#formState.roleExclude ?? []).filter(id => id !== tagId);
+          if (next === 'include') this.#formState.role.push(tagId);
+          else if (next === 'exclude') this.#formState.roleExclude.push(tagId);
+
+          this.#updateBadge('role');
+          return;
+        }
+
         const includeKey = group;
         const excludeKey = `${group}Exclude`;
         this.#formState[includeKey] = (this.#formState[includeKey] ?? []).filter(id => id !== tagId);
@@ -910,8 +1050,11 @@ export class ActorConfig extends BaseFormApplication {
     } else if (group === 'age') {
       count = (this.#formState.age?.length ?? 0) + (this.#formState.ageExclude?.length ?? 0);
       sectionId = 'age';
-    } else if (group === 'role') {
-      count = (this.#formState.role?.length ?? 0) + (this.#formState.roleExclude?.length ?? 0);
+    } else if (group === 'role' || group === 'roleGroup') {
+      count = (this.#formState.roleGroup?.length ?? 0)
+        + (this.#formState.roleGroupExclude?.length ?? 0)
+        + (this.#formState.role?.length ?? 0)
+        + (this.#formState.roleExclude?.length ?? 0);
       sectionId = 'role';
     } else if (group === 'other') {
       count = (this.#formState.other?.length ?? 0) + (this.#formState.otherExclude?.length ?? 0);
@@ -952,6 +1095,9 @@ export class ActorConfig extends BaseFormApplication {
 
     await this.#actor.unsetFlag(MODULE_ID, FLAGS.TOKEN_CRITERIA);
     await this.#actor.unsetFlag(MODULE_ID, FLAGS.PREV_FORM_VALUES);
+    if (!this.#actor.pack) {
+      await this.#actor.setFlag(MODULE_ID, FLAGS.LOCAL_OVERRIDE, true);
+    }
 
     ui.notifications.info(game.i18n.localize('cs-hero-box.form.clearRandom.success'));
     this.close();

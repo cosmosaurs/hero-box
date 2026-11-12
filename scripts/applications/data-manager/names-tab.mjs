@@ -1,21 +1,20 @@
-/**
+**
  * @fileoverview Data Manager "Names" tab: list/filter name sets, CRUD, test generation.
  */
 
 import { NAME_TYPES } from '../../constants/ui.mjs';
+import { TAG_CATEGORY } from '../../constants/tags.mjs';
 import { logger } from '../../utils/index.mjs';
 import { buildSidebarCategories, handleTagToggle } from '../../utils/sidebar.mjs';
-import { tag } from '../../services/index.mjs';
-import { nameGenerator } from '../../services/index.mjs';
+import { tag, nameGenerator } from '../../services/index.mjs';
 import { sortByLabel } from '../../utils/sort.mjs';
-import { getSetting, setSetting } from '../../settings.mjs';
-import { SETTINGS } from '../../constants/settings.mjs';
+import { CollapsedGroupsManager } from '../../utils/collapsed-groups.mjs';
 
 /** Tab logic for name sets; `app` is the parent DataManager. */
 export class NamesTab {
   #app = null;
   #filters = { tags: [], search: '', types: [] };
-  #collapsedGroups = new Set();
+  #collapsedManager = null;
 
   #sortedCache = null;
   #filteredCache = null;
@@ -24,6 +23,7 @@ export class NamesTab {
   /** @param {import('./data-manager.mjs').DataManager} app */
   constructor(app) {
     this.#app = app;
+    this.#collapsedManager = new CollapsedGroupsManager(app, 'names');
   }
 
   /** @returns {string} */
@@ -110,7 +110,12 @@ export class NamesTab {
       result = result.filter(set => {
         const setTags = new Set(set.tags);
         for (const t of filterTagsSet) {
-          if (!setTags.has(t)) return false;
+          if (tag.get(t)?.category === TAG_CATEGORY.ROLE_GROUP) {
+            const matchesGroup = setTags.has(t) || tag.getRoles(t).some(r => setTags.has(r.id));
+            if (!matchesGroup) return false;
+          } else if (!setTags.has(t)) {
+            return false;
+          }
         }
         return true;
       });
@@ -133,7 +138,7 @@ export class NamesTab {
 
   /** Called after tab render; restore sidebar collapse state. */
   onRender() {
-    this.#restoreCollapsedGroups();
+    this.#collapsedManager.restore();
   }
 
   /** Open name editor for a new journal page in the selected source. */
@@ -175,9 +180,10 @@ export class NamesTab {
       const page = await fromUuid(uuid);
       if (!page) return;
 
+      const safeName = foundry.utils.escapeHTML(page.name ?? '');
       const confirmed = await foundry.applications.api.DialogV2.confirm({
         window: { title: game.i18n.localize('cs-hero-box.dataManager.deleteConfirm.title') },
-        content: `<p>${game.i18n.format('cs-hero-box.dataManager.deleteConfirm.content', { name: page.name })}</p>`,
+        content: `<p>${game.i18n.format('cs-hero-box.dataManager.deleteConfirm.content', { name: safeName })}</p>`,
         yes: { default: true },
         no: { default: false },
       });
@@ -220,49 +226,20 @@ export class NamesTab {
     const isTypeFilter = target.dataset.typeFilter === 'true';
 
     handleTagToggle(this.#filters, tagId, tag, isTypeFilter);
+    if (!isTypeFilter && tag.get(tagId)?.category === TAG_CATEGORY.ROLE_GROUP && this.#filters.tags.includes(tagId)) {
+      this.#collapsedManager.setSubTreeExpanded(tagId, true);
+    }
     this.#filteredCache = null;
     this.#app.render();
   }
 
   /** @param {Event} event @param {HTMLElement} target */
   onToggleTagGroup(event, target) {
-    const group = target.closest('.cs-hero-box-data-manager__tag-group');
-    if (group) {
-      const category = group.dataset.category;
-      group.classList.toggle('collapsed');
-      if (group.classList.contains('collapsed')) {
-        this.#collapsedGroups.add(category);
-      } else {
-        this.#collapsedGroups.delete(category);
-      }
-      this.#saveCollapsedState();
-    }
+    this.#collapsedManager.toggle(target);
   }
 
-  /** Re-apply `.collapsed` on sidebar groups after re-render. */
-  #restoreCollapsedGroups() {
-    try {
-      const saved = getSetting(SETTINGS.COLLAPSED_DATA_MANAGER);
-      const tabCollapsed = saved?.names ?? [];
-      this.#collapsedGroups = new Set(tabCollapsed);
-    } catch {}
-
-    for (const category of this.#collapsedGroups) {
-      const group = this.#app.querySelector(`.cs-hero-box-data-manager__tag-group[data-category="${category}"]`);
-      if (group) {
-        group.classList.add('no-transition', 'collapsed');
-        requestAnimationFrame(() => {
-          requestAnimationFrame(() => group.classList.remove('no-transition'));
-        });
-      }
-    }
-  }
-
-  #saveCollapsedState() {
-    try {
-      const saved = getSetting(SETTINGS.COLLAPSED_DATA_MANAGER) ?? {};
-      saved.names = Array.from(this.#collapsedGroups);
-      setSetting(SETTINGS.COLLAPSED_DATA_MANAGER, saved);
-    } catch {}
+  /** @param {Event} event @param {HTMLElement} target */
+  onToggleRoleGroupTree(event, target) {
+    this.#collapsedManager.toggleSubTree(target);
   }
 }

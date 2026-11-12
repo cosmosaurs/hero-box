@@ -1,10 +1,11 @@
-/**
+**
  * @fileoverview Tag categories, built-in gender/age ids, and helpers.
  */
 
 export const TAG_CATEGORY = Object.freeze({
   RACE: 'race',
   SUBRACE: 'subrace',
+  ROLE_GROUP: 'roleGroup',
   ROLE: 'role',
   OTHER: 'other',
 });
